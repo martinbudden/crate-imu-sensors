@@ -1,4 +1,4 @@
-use crate::ImuBus;
+use super::ImuBus;
 
 #[allow(unused)]
 #[derive(Debug)]
