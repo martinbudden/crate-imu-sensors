@@ -1,11 +1,8 @@
 use embassy_time::{Duration, Timer};
 use vqm::Vector3f32;
 
-use crate::{
-    Imu, ImuAxisOrder, ImuBus, ImuCommon,
-    imu::{AccFullScale, AccUnits, GyroFullScale, GyroUnits},
-    imu_device::ImuDevice,
-    imu_device_config::ImuDeviceConfig,
+use super::{
+    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
 };
 
 const I2C_ADDRESS: u8 = 0x6A;

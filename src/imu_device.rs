@@ -1,6 +1,6 @@
 use vqm::Vector3f32;
 
-use crate::{AccFullScale, AccUnits, GyroFullScale, GyroUnits};
+use super::{AccFullScale, AccUnits, GyroFullScale, GyroUnits};
 
 #[allow(unused)]
 #[allow(async_fn_in_trait)]

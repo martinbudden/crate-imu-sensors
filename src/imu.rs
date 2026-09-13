@@ -1,4 +1,4 @@
-use crate::{ImuAxisOrder, ImuBus, imu_device_config::ImuDeviceConfig};
+use super::{ImuAxisOrder, ImuBus, imu_device_config::ImuDeviceConfig};
 
 use vqm::Vector3f32;
 

@@ -1,9 +1,7 @@
 use vqm::Vector3f32;
 
-use crate::{
-    Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
-    imu::{AccFullScale, AccUnits, GyroFullScale, GyroUnits},
-    imu_device_config::ImuDeviceConfig,
+use super::{
+    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
 };
 
 struct Reg;

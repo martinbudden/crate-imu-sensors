@@ -1,6 +1,6 @@
 use embedded_hal_async::spi::{Operation, SpiDevice};
 
-use crate::imu_bus::ImuBus;
+use super::ImuBus;
 
 #[allow(unused)]
 #[derive(Debug)]

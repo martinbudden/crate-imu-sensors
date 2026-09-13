@@ -1,4 +1,4 @@
-use crate::ImuAxisOrder;
+use super::ImuAxisOrder;
 
 #[cfg(feature = "serde")]
 use {

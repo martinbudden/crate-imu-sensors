@@ -1,5 +1,5 @@
 #![allow(unused)]
-use crate::MockImuBus;
+use super::MockImuBus;
 use embedded_hal::digital::OutputPin;
 use embedded_hal_async::spi;
 

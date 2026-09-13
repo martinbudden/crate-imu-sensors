@@ -1,5 +1,5 @@
 #![allow(unused)]
-use crate::MockImuBus;
+use super::MockImuBus;
 pub struct I2cInterface<B> {
     pub bus: B,
     pub address: u8,
