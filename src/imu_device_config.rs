@@ -1,9 +1,10 @@
 use super::ImuAxisOrder;
 
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
 
@@ -21,7 +22,7 @@ pub struct ImuDeviceConfig {
     pub flags: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for ImuDeviceConfig {}
 
 impl Default for ImuDeviceConfig {

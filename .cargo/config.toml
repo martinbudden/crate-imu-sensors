@@ -29,7 +29,13 @@ runner = "espflash flash --monitor"
 EMBASSY_EXECUTOR_TASK_ARENA_SIZE = "32768"
 
 [alias]
-# Run using: 'cargo test-host'
+# Run using: 'cargo check-serde'
+check-serde = "check --no-default-features --features std,serde --target x86_64-unknown-linux-gnu"
+check-storage = "check --no-default-features --features std,storage --target x86_64-unknown-linux-gnu"
+
+test-serde = "test --no-default-features --features std,serde --target x86_64-unknown-linux-gnu"
+test-storage = "test --no-default-features --features std,storage --target x86_64-unknown-linux-gnu"
+
 test-host = "test --no-default-features --features std,libm --target x86_64-unknown-linux-gnu"
 
 check-rp2040 = [

@@ -5,10 +5,11 @@ use cfg_if::cfg_if;
 #[cfg(feature = "std")]
 use strum::EnumIter;
 
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
 
@@ -59,7 +60,7 @@ pub enum ImuAxisOrder {
                             //XPOS_YPOS_ZPOS_315 = YNEG_XPOS_ZPOS_45,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for ImuAxisOrder {}
 
 impl ImuAxisOrder {

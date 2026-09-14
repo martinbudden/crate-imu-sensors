@@ -39,7 +39,8 @@ std = [
 libm = ["dep:libm", "vqm/libm"]
 align = ["vqm/align"]
 simd = ["vqm/simd"]
-serde = ["dep:serde", "postcard", "sequential-storage", "vqm/serde"]
+serde = ["dep:serde", "postcard", "vqm/serde"]
+storage = ["dep:sequential-storage", "serde", "vqm/storage"]
 
 # Peripheral & Sensor Configuration Triggers
 i2c = []
@@ -68,8 +69,8 @@ libm = { version = "0.2.16", optional = true }
 serde = { version = "1.0.229", default-features = false, features = ["derive"], optional = true }
 postcard = { version = "1.1.3", default-features = false, features = ["embedded-io", "experimental-derive"], optional = true }
 sequential-storage = { version = "8.0.1", default-features = false, features = ["postcard"], optional = true }
-vqm = { version = "0.1.16" }
-#vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
+#vqm = { version = "0.1.16" }
+vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm"  }
 
 cfg-if = "1.0.4"
