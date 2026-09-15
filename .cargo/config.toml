@@ -1,6 +1,6 @@
 [build]
 # Automatically compile for the RP2350 core when running generic 'cargo build'
-target = "thumbv8m.main-none-eabihf"
+#target = "thumbv8m.main-none-eabihf"
 
 # Configuration for RP2040 (e.g., original Raspberry Pi Pico)
 [target.thumbv6m-none-eabi]
@@ -53,3 +53,8 @@ check-rp235xa = [
     "--features",
     "rp235xa"
 ]
+
+# Continuous Integration
+ci = "run --package xtask --bin xtask"
+# MSRV
+check-msrv = "run --package xtask --bin xtask -- check-msrv"

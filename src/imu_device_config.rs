@@ -110,20 +110,29 @@ impl ImuDeviceConfig {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + for<'a> Deserialize<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<ImuDeviceConfig>();
         #[cfg(feature = "serde")]
-        is_config::<ImuDeviceConfig>();
+        is_serde::<ImuDeviceConfig>();
+        #[cfg(feature = "storage")]
+        is_storage::<ImuDeviceConfig>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
     fn new() {
         let config = ImuDeviceConfig::new();

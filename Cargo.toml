@@ -2,9 +2,10 @@
 name = "imu-sensors"
 version = "0.1.4"
 edition = "2024"
+rust-version = "1.89"
 authors = ["Martin Budden"]
 license = "MIT OR Apache-2.0"
-readme = "README.md"
+#readme = "README.md"
 repository = "https://github.com/martinbudden/crate-imu-sensors"
 description = "Drivers for a variety of IMU sensors."
 keywords = ["IMU", "gyro", "gyroscope", "accelerometer", "no_std"]
@@ -19,11 +20,12 @@ categories = [
 [package.metadata.docs.rs]
 all-features = true
 
-[build-dependencies]
-rustc_version = "0.4.1"
+#[build-dependencies]
+#rustc_version = "0.4.1"
 
 [features]
-default = ["libm", "spi"]
+#default = ["std"]
+#default = ["libm", "spi"]
 #default = ["libm", "spi", "serde"]
 
 # std is required for host testing
@@ -74,17 +76,16 @@ vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm"  }
 
 cfg-if = "1.0.4"
-strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 #num_enum = { version = "0.7.6", default-features = false }
 
 # Microcontroller-specific Embassy HAL (Marked optional = true so feature flags work)
 embassy-rp = { version = "0.10.0", default-features = false, features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl"], optional = true }
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true } 
-esp-idf-hal = { version = "0.46.2", default-features = false, optional = true }
+esp-idf-hal = { version = "0.47.0", default-features = false, optional = true }
 
 # General Embassy HAL (Marked optional = true to support the 'std' feature mapping)
 #embassy-executor = { version = "0.10.0", default-features = false, features = ["executor-thread"], optional = true }
-embassy-sync = { version = "0.8.0", default-features = false }
+#embassy-sync = { version = "0.8.0", default-features = false }
 embassy-time = { version = "0.5.1", default-features = false, features = ["generic-queue-8"] }
 
 # Use embedded-hal for I2C/SPI traits
@@ -96,8 +97,17 @@ log = { version = "0.4.32", default-features = false, optional = true }
 panic-probe = { version = "1.0.0", default-features = false, features = ["print-defmt"], optional = true }
 defmt = { version = "1.0.1", default-features = false, optional = true }
 defmt-rtt = { version = "1.2.0", default-features = false, optional = true }
-esp-println = { version = "0.17.0", features = ["log-04"], optional = true }
+esp-println = { version = "0.18.0", features = ["log-04"], optional = true }
 
 # --- DEV DEPENDENCIES (Only compiled for examples / tests) ---
 [dev-dependencies]
+imu-sensors = { path = ".", features = ["std", "serde", "storage"] }
 pollster = { version = "1.0.1", default-features = false }
+#strum = { version = "0.28.0", default-features = false, features = ["derive"] }
+
+[workspace]
+members = [
+    ".",
+    "xtask",
+    "examples",
+]
