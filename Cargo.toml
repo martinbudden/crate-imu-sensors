@@ -75,7 +75,7 @@ sequential-storage = { version = "8.0.1", default-features = false, features = [
 vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm"  }
 
-cfg-if = "1.0.4"
+cfg-if = "1.0.5"
 #num_enum = { version = "0.7.6", default-features = false }
 
 # Microcontroller-specific Embassy HAL (Marked optional = true so feature flags work)
