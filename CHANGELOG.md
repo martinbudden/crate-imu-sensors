@@ -9,6 +9,18 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
+## [0.1.5] - 2026-10-01
+
+### Changed
+
+- updated to `vqm` `0.1.17`.
+- split `serde` feature into `serde` and `storage`.
+- updated to Rust version 1.89.
+
+### Added
+
+- support for continuous integration.
+
 ## [0.1.4] - 2026-09-05
 
 ### Changed
