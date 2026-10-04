@@ -54,6 +54,8 @@ check-rp235xa = [
     "rp235xa"
 ]
 
+check-esp32s3 = "run --manifest-path xtask/Cargo.toml -- check-esp32s3"
+
 # Continuous Integration
 ci = "run --package xtask --bin xtask"
 # MSRV

@@ -64,7 +64,13 @@ rp2040 = ["rp", "embassy-rp/rp2040"]
 rp235xa = ["rp", "embassy-rp/rp235xa", "embassy-rp/binary-info"]
 rp235xb = ["rp", "embassy-rp/rp235xb", "embassy-rp/binary-info"]
 stm32   = ["dep:embassy-stm32"]
-esp32   = ["dep:esp-idf-hal"]
+tm32f405 = ["stm32", "embassy-stm32/stm32f405rg"]
+esp32s3 = [
+    "dep:esp-hal",
+    "esp-hal/esp32s3",
+    "esp-hal/unstable",
+    "xtensa-lx",
+]
 
 [dependencies]
 libm = { version = "0.2.16", optional = true }
@@ -80,8 +86,9 @@ cfg-if = "1.0.5"
 
 # Microcontroller-specific Embassy HAL (Marked optional = true so feature flags work)
 embassy-rp = { version = "0.10.0", default-features = false, features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl"], optional = true }
-embassy-stm32 = { version = "0.6.0", default-features = false, optional = true } 
-esp-idf-hal = { version = "0.47.0", default-features = false, optional = true }
+embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
+esp-hal = { version = "1.2.2", default-features = false, optional = true }
+xtensa-lx = { version = "0.13.0", default-features = false, optional = true }
 
 # General Embassy HAL (Marked optional = true to support the 'std' feature mapping)
 #embassy-executor = { version = "0.10.0", default-features = false, features = ["executor-thread"], optional = true }
