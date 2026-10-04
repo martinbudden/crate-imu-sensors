@@ -10,42 +10,47 @@ const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
 // **** IMU Registers and associated bitflags ****
 
-const _REG_WHO_AM_I: u8 = 0x00;
-const _REG_REVISION_ID: u8 = 0x01;
-const REG_RESET: u8 = 0x60;
+struct Reg;
 
-const REG_CTRL1: u8 = 0x02;
-const REG_CTRL2: u8 = 0x03;
-const REG_CTRL3: u8 = 0x04;
-const _REG_CTRL5: u8 = 0x06;
-const REG_CTRL7: u8 = 0x08;
-const _REG_CTRL8: u8 = 0x09;
-const _REG_CTRL9: u8 = 0x0a;
+#[allow(unused)]
+impl Reg {
+    const WHO_AM_I: u8 = 0x00;
+    const REVISION_ID: u8 = 0x01;
+    const RESET: u8 = 0x60;
 
-const _REG_CAL1_L: u8 = 0x0b;
-const _REG_CAL1_H: u8 = 0x0c;
-const _REG_CAL2_L: u8 = 0x0d;
-const _REG_CAL2_H: u8 = 0x0e;
-const _REG_CAL3_L: u8 = 0x0f;
-const _REG_CAL3_H: u8 = 0x10;
-const _REG_CAL4_L: u8 = 0x11;
-const _REG_CAL4_H: u8 = 0x12;
+    const CTRL1: u8 = 0x02;
+    const CTRL2: u8 = 0x03;
+    const CTRL3: u8 = 0x04;
+    const CTRL5: u8 = 0x06;
+    const CTRL7: u8 = 0x08;
+    const CTRL8: u8 = 0x09;
+    const CTRL9: u8 = 0x0a;
 
-const _REG_TEMP_L: u8 = 0x033;
-const _REG_TEMP_H: u8 = 0x034;
-const REG_AX_L: u8 = 0x035;
-const _REG_AX_H: u8 = 0x036;
-const _REG_AY_L: u8 = 0x037;
-const _REG_AY_H: u8 = 0x038;
-const _REG_AZ_L: u8 = 0x039;
-const _REG_AZ_H: u8 = 0x031;
+    const CAL1_L: u8 = 0x0b;
+    const CAL1_H: u8 = 0x0c;
+    const CAL2_L: u8 = 0x0d;
+    const CAL2_H: u8 = 0x0e;
+    const CAL3_L: u8 = 0x0f;
+    const CAL3_H: u8 = 0x10;
+    const CAL4_L: u8 = 0x11;
+    const CAL4_H: u8 = 0x12;
 
-const REG_GX_L: u8 = 0x03B;
-const _REG_GX_H: u8 = 0x03c;
-const _REG_GY_L: u8 = 0x03d;
-const _REG_GY_H: u8 = 0x03e;
-const _REG_GZ_L: u8 = 0x03f;
-const _REG_GZ_H: u8 = 0x040;
+    const TEMP_L: u8 = 0x033;
+    const TEMP_H: u8 = 0x034;
+    const AX_L: u8 = 0x035;
+    const AX_H: u8 = 0x036;
+    const AY_L: u8 = 0x037;
+    const AY_H: u8 = 0x038;
+    const AZ_L: u8 = 0x039;
+    const AZ_H: u8 = 0x031;
+
+    const GX_L: u8 = 0x03B;
+    const GX_H: u8 = 0x03c;
+    const GY_L: u8 = 0x03d;
+    const GY_H: u8 = 0x03e;
+    const GZ_L: u8 = 0x03f;
+    const GZ_H: u8 = 0x040;
+}
 
 #[allow(missing_docs)]
 #[derive(Debug, PartialEq)]
@@ -100,21 +105,21 @@ impl<B: ImuBus> Imu for Qmi8658a<B> {
 
     async fn read_acc(&mut self) -> Result<Vector3f32, Self::Error> {
         let mut buf = [0u8; 6];
-        self.write_read(&[REG_AX_L], &mut buf).await?;
+        self.write_read(&[Reg::AX_L], &mut buf).await?;
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
     async fn read_gyro(&mut self) -> Result<Vector3f32, Self::Error> {
         let mut buf = [0u8; 6];
-        self.write_read(&[REG_GX_L], &mut buf).await?;
+        self.write_read(&[Reg::GX_L], &mut buf).await?;
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
     async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), Self::Error> {
         let mut buf = [0u8; 12];
-        self.write_read(&[REG_AX_L], &mut buf).await?;
+        self.write_read(&[Reg::AX_L], &mut buf).await?;
 
         let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -177,34 +182,34 @@ impl<B: ImuBus> Qmi8658a<B> {
         const ACC_ENABLE: u8 = 0b_0000_0001;
 
         // soft RESET
-        self.write_register(REG_RESET, 0x0b).await?;
+        self.write_register(Reg::RESET, 0x0b).await?;
         // soft reset takes a maximum of 15ms
         delay_ms(15).await;
 
-        // REG_CTRL1
-        self.write_register(REG_CTRL1, ADDRESS_AUTO_INCREMENT | INT2_ENABLE).await?;
+        // CTRL1
+        self.write_register(Reg::CTRL1, ADDRESS_AUTO_INCREMENT | INT2_ENABLE).await?;
         delay_ms(1).await;
 
-        // REG_CTRL2
+        // CTRL2
         let acc_register_value =
             self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
-        self.write_register(REG_CTRL2, acc_register_value).await?;
+        self.write_register(Reg::CTRL2, acc_register_value).await?;
         delay_ms(1).await;
 
-        // REG_CTRL3
+        // CTRL3
         let gyro_register_value =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
-        self.write_register(REG_CTRL3, gyro_register_value).await?;
+        self.write_register(Reg::CTRL3, gyro_register_value).await?;
         delay_ms(1).await;
 
-        // No REG_CTRL4
-        // REG_CTRL5 is LPF filters - leave all off
-        // No REG_CTRL6
+        // No CTRL4
+        // CTRL5 is LPF filters - leave all off
+        // No CTRL6
 
-        // REG_CTRL7, DRDY is enabled by default, sets INT2 pin high
-        self.write_register(REG_CTRL7, GYRO_ENABLE | ACC_ENABLE).await?;
+        // CTRL7, DRDY is enabled by default, sets INT2 pin high
+        self.write_register(Reg::CTRL7, GYRO_ENABLE | ACC_ENABLE).await?;
         delay_ms(1).await;
-        // REG_CTRL8 is motion detection - leave all off
+        // CTRL8 is motion detection - leave all off
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
@@ -235,7 +240,7 @@ impl<B: ImuBus> Qmi8658a<B> {
         const _GYRO_RANGE_32_DPS: u8 = 0b_0001_0000;
         const _GYRO_RANGE_16_DPS: u8 = 0b_0000_0000;
 
-        // calculate the GYRO_ODR bit values to write to the REG_GYRO_CONFIG0 register
+        // calculate the GYRO_ODR bit values to write to the GYRO_CONFIG0 register
         let (scale_dps, gyro_register_value) = match gyro_sensitivity {
             GyroFullScale::Scale125Dps => (128.0 / 32768.0, GYRO_RANGE_128_DPS),
             GyroFullScale::Scale250Dps => (256.0 / 32768.0, GYRO_RANGE_256_DPS),
@@ -281,7 +286,7 @@ impl<B: ImuBus> Qmi8658a<B> {
         const ACCEL_RANGE_8G: u8 = 0b_0010_0000;
         const ACCEL_RANGE_4G: u8 = 0b_0001_0000;
         const ACCEL_RANGE_2G: u8 = 0b_0000_0000;
-        // calculate the ACCEL_ODR bit values to write to the REG_ACCEL_CONFIG0 register
+        // calculate the ACCEL_ODR bit values to write to the ACCEL_CONFIG0 register
         let (scale, acc_register_value) = match acc_sensitivity {
             AccFullScale::Scale2G => (2.0 / 32768.0, ACCEL_RANGE_2G),
             AccFullScale::Scale4G => (4.0 / 32768.0, ACCEL_RANGE_4G),
