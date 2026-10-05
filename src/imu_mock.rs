@@ -2,6 +2,7 @@ use vqm::Vector3f32;
 
 use super::{
     AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
+    ImuError,
 };
 
 struct Reg;
@@ -30,8 +31,6 @@ pub struct ImuMock<B: ImuBus> {
 }
 
 impl<B: ImuBus> ImuDevice for ImuMock<B> {
-    type Error = B::Error;
-
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
@@ -39,18 +38,17 @@ impl<B: ImuBus> ImuDevice for ImuMock<B> {
         gyro_units: GyroUnits,
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
-    ) -> Result<(u32, u32), Self::Error> {
+    ) -> Result<(u32, u32), ImuError> {
         ImuMock::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), Self::Error> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         <Self as Imu>::read_acc_gyro(self).await
     }
 }
 
 impl<B: ImuBus> Imu for ImuMock<B> {
     type Bus = B;
-    type Error = <B as ImuBus>::Error;
 
     #[inline]
     fn bus(&mut self) -> &mut Self::Bus {
@@ -72,7 +70,7 @@ impl<B: ImuBus> Imu for ImuMock<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, Self::Error> {
+    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
         #[allow(clippy::expect_used)]
         self.bus().read_registers(0, Reg::ACC_XL, &mut buf).await.expect("read_resisters cannot fail for ImuMock");
@@ -80,7 +78,7 @@ impl<B: ImuBus> Imu for ImuMock<B> {
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, Self::Error> {
+    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
         #[allow(clippy::expect_used)]
         self.bus().read_registers(0, Reg::GYRO_XL, &mut buf).await.expect("read_resisters cannot fail for ImuMock");
@@ -88,7 +86,7 @@ impl<B: ImuBus> Imu for ImuMock<B> {
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), Self::Error> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         let mut buf = [0u8; 12];
         #[allow(clippy::expect_used)]
         self.bus().read_registers(0, Reg::ACC_XL, &mut buf).await.expect("read_resisters cannot fail for ImuMock");
@@ -168,7 +166,7 @@ impl<B: ImuBus> ImuMock<B> {
         gyro_units: GyroUnits,
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
-    ) -> Result<(u32, u32), B::Error> {
+    ) -> Result<(u32, u32), ImuError> {
         self.bus.write_register(0, 0, 0).await?;
 
         self.calculate_acc_scale(acc_sensitivity, acc_units);
@@ -210,7 +208,7 @@ impl<B: ImuBus> ImuMock<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp)]
+    #![allow(clippy::float_cmp, clippy::unwrap_used)]
 
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
@@ -220,7 +218,7 @@ mod tests {
 
     impl<B: ImuBus> ImuMock<B> {
         /// # Errors
-        pub async fn read_register(&mut self, reg: u8) -> Result<u8, B::Error> {
+        pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
             self.bus.read_register(self.config.address, reg).await
         }
     }

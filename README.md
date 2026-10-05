@@ -22,7 +22,7 @@ The following IMUs are supported:
 | ST [LSM6DSOX](https://www.st.com/en/mems-and-sensors/lsm6dsox.html)                                 | `LSM6DSOX`    |
 | QST [QMI-8658](https://www.qstcorp.com/en_imu_prod/QMI8658/)                                        | `QMI8658`     |
 | Invensense MPU-6886                                                                                 | `MPU6886`     |
-| ImuMock - mock IMU for testing                                                                      | `ImuMock`     |
+| `ImuMock` - mock IMU for testing                                                                    | `ImuMock`     |
 
 The ICM-42605 and ICM-42688 are broadly compatible and share the same driver.
 

@@ -1,7 +1,5 @@
 #![allow(unused)]
-use super::MockImuBus;
 use embedded_hal::digital::OutputPin;
-use embedded_hal_async::spi;
 
 // Wrapper for SPI
 pub struct SpiInterface<B, CS> {
@@ -20,14 +18,14 @@ where
     CS: OutputPin,
 {
     pub async fn read_register(&mut self, reg: u8) -> Result<u8, SPI::Error> {
-        // 1. Select the device (Pull CS LOW)
+        // Select the device (Pull CS LOW)
         _ = self.cs.set_low().ok();
 
-        // 2. Perform SPI Transfer (e.g., Read command 0x80 | reg)
+        // Perform SPI Transfer (eg Read command 0x80 | reg)
         let mut data = [reg | 0x80, 0];
         self.spi.transfer_in_place(&mut data).await?;
 
-        // 3. Deselect the device (Pull CS HIGH)
+        // Deselect the device (Pull CS HIGH)
         _ = self.cs.set_high().ok();
 
         Ok(data[1])

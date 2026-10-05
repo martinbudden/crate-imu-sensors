@@ -3,12 +3,12 @@ use vqm::Vector3f32;
 
 use super::{
     AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
+    ImuError,
 };
 
 const I2C_ADDRESS: u8 = 0x68;
 
 // **** IMU Registers and associated bitflags ****
-#[allow(unused)]
 struct Reg;
 
 impl Reg {
@@ -98,8 +98,6 @@ pub struct Mpu6886<B: ImuBus> {
 }
 
 impl<B: ImuBus> ImuDevice for Mpu6886<B> {
-    type Error = B::Error;
-
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
@@ -107,18 +105,17 @@ impl<B: ImuBus> ImuDevice for Mpu6886<B> {
         gyro_units: GyroUnits,
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
-    ) -> Result<(u32, u32), Self::Error> {
+    ) -> Result<(u32, u32), ImuError> {
         Mpu6886::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), Self::Error> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         <Self as Imu>::read_acc_gyro(self).await
     }
 }
 
 impl<B: ImuBus> Imu for Mpu6886<B> {
     type Bus = B;
-    type Error = <B as ImuBus>::Error;
 
     #[inline]
     fn bus(&mut self) -> &mut Self::Bus {
@@ -140,21 +137,21 @@ impl<B: ImuBus> Imu for Mpu6886<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, Self::Error> {
+    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::ACCEL_XOUT_H], &mut buf).await?;
         let acc = Vector3f32::from_be_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, Self::Error> {
+    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
         let gyro = Vector3f32::from_be_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), Self::Error> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         let mut buf = [0u8; 14];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
 
@@ -192,7 +189,7 @@ impl<B: ImuBus> Mpu6886<B> {
     }
 
     /// # Errors
-    pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), B::Error> {
+    pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), ImuError> {
         self.bus.write_register(self.config.address, reg, data).await
     }
 
@@ -205,7 +202,7 @@ impl<B: ImuBus> Mpu6886<B> {
         gyro_units: GyroUnits,
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
-    ) -> Result<(u32, u32), B::Error> {
+    ) -> Result<(u32, u32), ImuError> {
         let _chip_id = self.bus.read_register(self.config.address, Reg::WHO_AM_I).await;
         delay_ms(1).await;
 
@@ -307,7 +304,7 @@ impl<B: ImuBus> Mpu6886<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp)]
+    #![allow(clippy::float_cmp, clippy::unwrap_used)]
     use super::*;
     use crate::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuAxisOrder, MockImuBus};
 
@@ -316,7 +313,7 @@ mod tests {
 
     impl<B: ImuBus> Mpu6886<B> {
         /// # Errors
-        pub async fn read_register(&mut self, reg: u8) -> Result<u8, B::Error> {
+        pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
             self.bus.read_register(self.config.address, reg).await
         }
     }

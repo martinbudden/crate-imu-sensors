@@ -5,7 +5,7 @@
 # Default target: RP2350 (Pico 2)
 # For RP2040: cargo build --features rp2040 --target thumbv6m-none-eabi
 
-# Configuration for RP2040 (e.g., original Raspberry Pi Pico)
+# Configuration for RP2040
 [target.thumbv6m-none-eabi]
 runner = "probe-rs run --chip RP2040"
 rustflags = [
@@ -13,7 +13,7 @@ rustflags = [
     "link-arg=-Tlink.x",
 ]
 
-# Configuration for RP2350 (e.g., Raspberry Pi Pico 2 ARM Core)
+# Configuration for RP2350
 [target.thumbv8m.main-none-eabihf]
 runner = "probe-rs run --chip RP235x"
 

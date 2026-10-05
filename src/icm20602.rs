@@ -1,7 +1,9 @@
 use embassy_time::{Duration, Timer};
 use vqm::Vector3f32;
 
-use super::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDeviceConfig};
+use super::{
+    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDeviceConfig, ImuError,
+};
 
 const I2C_ADDRESS: u8 = 0x68;
 const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x69;
@@ -90,7 +92,6 @@ pub struct Icm20602<B: ImuBus> {
 
 impl<B: ImuBus> Imu for Icm20602<B> {
     type Bus = B;
-    type Error = <B as ImuBus>::Error;
 
     #[inline]
     fn bus(&mut self) -> &mut Self::Bus {
@@ -112,21 +113,21 @@ impl<B: ImuBus> Imu for Icm20602<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, Self::Error> {
+    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[REG_ACCEL_XOUT_H], &mut buf).await?;
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, Self::Error> {
+    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[REG_GYRO_XOUT_H], &mut buf).await?;
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), Self::Error> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         let mut buf = [0u8; 14];
         self.write_read(&[REG_ACCEL_XOUT_H], &mut buf).await?;
 
@@ -164,7 +165,7 @@ impl<B: ImuBus> Icm20602<B> {
     }
 
     /// # Errors
-    pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), B::Error> {
+    pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), ImuError> {
         self.bus.write_register(self.config.address, reg, data).await
     }
 
@@ -176,7 +177,7 @@ impl<B: ImuBus> Icm20602<B> {
         gyro_units: GyroUnits,
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
-    ) -> Result<(u32, u32), B::Error> {
+    ) -> Result<(u32, u32), ImuError> {
         const DEVICE_RESET: u8 = 0x01 << 7;
         const CLKSEL_1: u8 = 0x01;
         const DATA_RDY_INT_EN: u8 = 0x01;
@@ -301,7 +302,7 @@ impl<B: ImuBus> Icm20602<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp)]
+    #![allow(clippy::float_cmp, clippy::unwrap_used)]
 
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
@@ -310,7 +311,7 @@ mod tests {
     fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     impl<B: ImuBus> Icm20602<B> {
-        async fn read_register(&mut self, reg: u8) -> Result<u8, B::Error> {
+        async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
             self.bus.read_register(self.config.address, reg).await
         }
     }

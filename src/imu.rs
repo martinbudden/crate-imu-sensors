@@ -1,4 +1,4 @@
-use super::{ImuAxisOrder, ImuBus, imu_device_config::ImuDeviceConfig};
+use super::{ImuAxisOrder, ImuBus, ImuError, imu_device_config::ImuDeviceConfig};
 
 use vqm::Vector3f32;
 
@@ -93,9 +93,6 @@ impl Default for ImuCommon {
 #[allow(async_fn_in_trait)]
 pub trait Imu {
     type Bus: ImuBus;
-    // This forces the IMU error to be the same as the Bus error
-    /// The global error type for this IMU, required to be printable and capable of wrapping raw bus transaction failures.
-    type Error: core::fmt::Debug + From<<Self::Bus as ImuBus>::Error>;
 
     const TARGET_OUTPUT_DATA_RATE_MAX: u8 = 0;
 
@@ -104,19 +101,19 @@ pub trait Imu {
     fn common_mut(&mut self) -> &mut ImuCommon;
     fn config(&self) -> &ImuDeviceConfig;
 
-    //async fn write_read(&mut self, write: &[u8], read: &mut [u8]) -> Result<(), Self::Error>;
+    //async fn write_read(&mut self, write: &[u8], read: &mut [u8]) -> Result<(), ImuError>;
     /// Passes raw payloads straight to the bus. Provided as a default wrapper.
     #[inline]
-    async fn write_read(&mut self, write: &[u8], read: &mut [u8]) -> Result<(), Self::Error> {
+    async fn write_read(&mut self, write: &[u8], read: &mut [u8]) -> Result<(), ImuError> {
         let address = self.config().address;
-        self.bus().bus_write_read(address, write, read).await.map_err(Self::Error::from)
+        self.bus().bus_write_read(address, write, read).await
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, Self::Error>;
+    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError>;
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, Self::Error>;
+    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError>;
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), Self::Error>;
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError>;
 
     #[inline]
     #[must_use]

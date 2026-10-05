@@ -2,14 +2,14 @@
 # Automatically compile for the RP2350 core when running generic 'cargo build'
 #target = "thumbv8m.main-none-eabihf"
 
-# Configuration for RP2040 (e.g., original Raspberry Pi Pico)
+# Configuration for RP2040
 [target.thumbv6m-none-eabi]
 runner = "probe-rs run --chip RP2040"
 rustflags = [
     "-C",
     "link-arg=-Tlink.x",
 ]
-# Configuration for RP2350 (e.g., Raspberry Pi Pico 2 ARM Core)
+# Configuration for RP2350
 [target.thumbv8m.main-none-eabihf]
 # Required flags for compilation and linking embedded binaries
 rustflags = [
