@@ -11,107 +11,112 @@ const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
 use cfg_if::cfg_if;
 
-// **** IMU Registers and associated bitflags ****
-const _REG_RESERVED_00: u8 = 0x00;
-const _REG_FUNC_CFG_ACCESS: u8 = 0x01;
-const _REG_RESERVED_03: u8 = 0x03;
+/// IMU Registers.
+struct Reg;
 
-cfg_if! {
-if #[cfg(feature = "lsm6ds3tr_c")] {
-const REG_RESERVED_02: u8 = 0x02;
-const REG_SENSOR_SYNC_TIME_FRAME: u8 = 0x04;
-const REG_SENSOR_SYNC_RES_RATIO: u8 = 0x05;
-const REG_FIFO_CTRL1: u8 = 0x06;
-const REG_FIFO_CTRL2: u8 = 0x07;
-const REG_FIFO_CTRL3: u8 = 0x08;
-const REG_FIFO_CTRL4: u8 = 0x09;
-const REG_FIFO_CTRL5: u8 = 0x0A;
-const REG_DRDY_PULSE_CFG_G: u8 = 0x0B;
-const REG_RESERVED_0C: u8 = 0x0C;
-const REG_MASTER_CONFIG: u8 = 0x1A;
+impl Reg {
+    const _RESERVED_00: u8 = 0x00;
+    const _FUNC_CFG_ACCESS: u8 = 0x01;
+    const _RESERVED_03: u8 = 0x03;
 
-} else if #[cfg(feature = "ism330dhcx")] {
+    cfg_if! {
+    if #[cfg(feature = "lsm6ds3tr_c")] {
+    const  RESERVED_02: u8 = 0x02;
+    const  SENSOR_SYNC_TIME_FRAME: u8 = 0x04;
+    const  SENSOR_SYNC_RES_RATIO: u8 = 0x05;
+    const  FIFO_CTRL1: u8 = 0x06;
+    const  FIFO_CTRL2: u8 = 0x07;
+    const  FIFO_CTRL3: u8 = 0x08;
+    const  FIFO_CTRL4: u8 = 0x09;
+    const  FIFO_CTRL5: u8 = 0x0A;
+    const  DRDY_PULSE_CFG_G: u8 = 0x0B;
+    const  RESERVED_0C: u8 = 0x0C;
+    const  MASTER_CONFIG: u8 = 0x1A;
 
-const REG_PIN_CTRL: u8 = 0x02;
-const REG_RESERVED_04: u8 = 0x04;
-const REG_RESERVED_05: u8 = 0x05;
-const REG_RESERVED_06: u8 = 0x06;
-const REG_FIFO_CTRL1: u8 = 0x07;
-const REG_FIFO_CTRL2: u8 = 0x08;
-const REG_FIFO_CTRL3: u8 = 0x09;
-const REG_FIFO_CTRL4: u8 = 0x0A;
-const REG_COUNTER_BDR_REG1: u8 = 0x0B;
-const REG_COUNTER_BDR_REG2: u8 = 0x0C;
-const REG_ALL_INT_SRC: u8 = 0x1A;
+    } else if #[cfg(feature = "ism330dhcx")] {
 
-} else if #[cfg(feature = "lsm6dsox")] {
-const REG_PIN_CTRL: u8 = 0x02;
-const REG_S4S_TPH_L: u8 = 0x04;
-const REG_S4S_TPH_H: u8 = 0x05;
-const REG_S4S_RR: u8 = 0x06;
-const REG_FIFO_CTRL1: u8 = 0x07;
-const REG_FIFO_CTRL2: u8 = 0x08;
-const REG_FIFO_CTRL3: u8 = 0x09;
-const REG_FIFO_CTRL4: u8 = 0x0A;
-const REG_COUNTER_BDR_REG1: u8 = 0x0B;
-const REG_COUNTER_BDR_REG2: u8 = 0x0C;
-const REG_ALL_INT_SRC: u8 = 0x1A;
+    const  PIN_CTRL: u8 = 0x02;
+    const  RESERVED_04: u8 = 0x04;
+    const  RESERVED_05: u8 = 0x05;
+    const  RESERVED_06: u8 = 0x06;
+    const  FIFO_CTRL1: u8 = 0x07;
+    const  FIFO_CTRL2: u8 = 0x08;
+    const  FIFO_CTRL3: u8 = 0x09;
+    const  FIFO_CTRL4: u8 = 0x0A;
+    const  COUNTER_BDR_REG1: u8 = 0x0B;
+    const  COUNTER_BDR_REG2: u8 = 0x0C;
+    const  ALL_INT_SRC: u8 = 0x1A;
+
+    } else if #[cfg(feature = "lsm6dsox")] {
+    const  PIN_CTRL: u8 = 0x02;
+    const  S4S_TPH_L: u8 = 0x04;
+    const  S4S_TPH_H: u8 = 0x05;
+    const  S4S_RR: u8 = 0x06;
+    const  FIFO_CTRL1: u8 = 0x07;
+    const  FIFO_CTRL2: u8 = 0x08;
+    const  FIFO_CTRL3: u8 = 0x09;
+    const  FIFO_CTRL4: u8 = 0x0A;
+    const  COUNTER_BDR_REG1: u8 = 0x0B;
+    const  COUNTER_BDR_REG2: u8 = 0x0C;
+    const  ALL_INT_SRC: u8 = 0x1A;
+    }
+    }
+
+    const DATA_READY_PULSE_CONFIG: u8 = 0x0B;
+    const INT1_CTRL: u8 = 0x0D;
+    const INT2_CTRL: u8 = 0x0E;
+    const _WHO_AM_I: u8 = 0x0F;
+    const CTRL1_XL: u8 = 0x10;
+    const CTRL2_G: u8 = 0x11;
+    const CTRL3_C: u8 = 0x12;
+    const _CTRL4_C: u8 = 0x13;
+    const _CTRL5_C: u8 = 0x14;
+    const _CTRL6_C: u8 = 0x15;
+    const _LPF1_LO: u8 = 0x02;
+    const _LPF1_HI: u8 = 0x03;
+    const _CTRL7_G: u8 = 0x16;
+    const _CTRL8_XL: u8 = 0x17;
+    const _CTRL9_XL: u8 = 0x18;
+    const _CTRL10_C: u8 = 0x19;
+    const _WAKE_UP_SRC: u8 = 0x1B;
+    const _TAP_SRC: u8 = 0x1C;
+    const _D6D_SRC: u8 = 0x1D;
+    const _STATUS_REG: u8 = 0x1E;
+    const _RESERVED_1F: u8 = 0x1F;
+
+    const _OUT_TEMP_L: u8 = 0x20;
+    const _OUT_TEMP_H: u8 = 0x22;
+
+    const OUTX_L_G: u8 = 0x22;
+    const _OUTX_H_G: u8 = 0x23;
+    const _OUTY_L_G: u8 = 0x24;
+    const _OUTY_H_G: u8 = 0x25;
+    const _OUTZ_L_G: u8 = 0x26;
+    const _OUTZ_H_G: u8 = 0x27;
+
+    const OUTX_L_ACC: u8 = 0x28;
+    const _OUTX_H_ACC: u8 = 0x29;
+    const _OUTY_L_ACC: u8 = 0x2A;
+    const _OUTY_H_ACC: u8 = 0x2B;
+    const _OUTZ_L_ACC: u8 = 0x2C;
+    const _OUTZ_H_ACC: u8 = 0x2D;
 }
-}
 
-const REG_DATA_READY_PULSE_CONFIG: u8 = 0x0B;
-const DATA_READY_PULSED: u8 = 0b_1000_0000;
-const REG_INT1_CTRL: u8 = 0x0D;
+// IMU register bitflags
 const INT1_DRDY_G: u8 = 0b_0000_0010;
-const REG_INT2_CTRL: u8 = 0x0E;
 const INT2_DRDY_G: u8 = 0b_0000_0010;
-const _REG_WHO_AM_I: u8 = 0x0F;
-const _REG_WHO_AM_I_RESPONSE_LSM6DS3TR_C: u8 = 0x6A;
-const _REG_WHO_AM_I_RESPONSE_ISM330DHCX: u8 = 0x6B;
-const _REG_WHO_AM_I_RESPONSE_LSM6DSOX: u8 = 0x6C;
-const REG_CTRL1_XL: u8 = 0x10;
-const REG_CTRL2_G: u8 = 0x11;
-const REG_CTRL3_C: u8 = 0x12;
 const BDU: u8 = 0b_0100_0000;
 const IF_INC: u8 = 0b_0000_0100;
 const SW_RESET: u8 = 0b_0000_0001;
-const _REG_CTRL4_C: u8 = 0x13;
 const _I2C_DISABLE: u8 = 0b_0000_0100;
 const _LPF1_SEL_G: u8 = 0b_0000_0010;
-const _REG_CTRL5_C: u8 = 0x14;
-const _REG_CTRL6_C: u8 = 0x15;
 const _XL_HM_MODE_DISABLE: u8 = 0b_0001_0000;
 const _LPF1_MEDIUM_HI: u8 = 0x00;
 const _LPF1_MEDIUM_LO: u8 = 0x01;
-const _LPF1_LO: u8 = 0x02;
-const _LPF1_HI: u8 = 0x03;
-const _REG_CTRL7_G: u8 = 0x16;
-const _REG_CTRL8_XL: u8 = 0x17;
-const _REG_CTRL9_XL: u8 = 0x18;
-const _REG_CTRL10_C: u8 = 0x19;
-const _REG_WAKE_UP_SRC: u8 = 0x1B;
-const _REG_TAP_SRC: u8 = 0x1C;
-const _REG_D6D_SRC: u8 = 0x1D;
-const _REG_STATUS_REG: u8 = 0x1E;
-const _REG_RESERVED_1F: u8 = 0x1F;
-
-const _REG_OUT_TEMP_L: u8 = 0x20;
-const _REG_OUT_TEMP_H: u8 = 0x22;
-
-const REG_OUTX_L_G: u8 = 0x22;
-const _REG_OUTX_H_G: u8 = 0x23;
-const _REG_OUTY_L_G: u8 = 0x24;
-const _REG_OUTY_H_G: u8 = 0x25;
-const _REG_OUTZ_L_G: u8 = 0x26;
-const _REG_OUTZ_H_G: u8 = 0x27;
-
-const REG_OUTX_L_ACC: u8 = 0x28;
-const _REG_OUTX_H_ACC: u8 = 0x29;
-const _REG_OUTY_L_ACC: u8 = 0x2A;
-const _REG_OUTY_H_ACC: u8 = 0x2B;
-const _REG_OUTZ_L_ACC: u8 = 0x2C;
-const _REG_OUTZ_H_ACC: u8 = 0x2D;
-// **** IMU Registers and associated bitflags ****
+const DATA_READY_PULSED: u8 = 0b_1000_0000;
+const _WHO_AM_I_RESPONSE_LSM6DS3TR_C: u8 = 0x6A;
+const _WHO_AM_I_RESPONSE_ISM330DHCX: u8 = 0x6B;
+const _WHO_AM_I_RESPONSE_LSM6DSOX: u8 = 0x6C;
 
 #[derive(Debug, PartialEq)]
 pub struct Lsm6ds<B: ImuBus> {
@@ -162,21 +167,21 @@ impl<B: ImuBus> Imu for Lsm6ds<B> {
 
     async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
-        self.write_read(&[REG_OUTX_L_ACC], &mut buf).await?;
+        self.write_read(&[Reg::OUTX_L_ACC], &mut buf).await?;
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
     async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
-        self.write_read(&[REG_OUTX_L_G], &mut buf).await?;
+        self.write_read(&[Reg::OUTX_L_G], &mut buf).await?;
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
     async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         let mut buf = [0u8; 12];
-        self.write_read(&[REG_OUTX_L_G], &mut buf).await?;
+        self.write_read(&[Reg::OUTX_L_G], &mut buf).await?;
 
         let [g0, g1, g2, g3, g4, g5, a0, a1, a2, a3, a4, a5] = buf;
 
@@ -225,36 +230,36 @@ impl<B: ImuBus> Lsm6ds<B> {
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
-        //if (chip_id != REG_WHO_AM_I_RESPONSE_LSM6DS3TR_C && chip_id != REG_WHO_AM_I_RESPONSE_ISM330DHCX && chip_id != REG_WHO_AM_I_RESPONSE_LSM6DSOX) {
+        //if (chip_id != Reg::WHO_AM_I_RESPONSE_LSM6DS3TR_C && chip_id != Reg::WHO_AM_I_RESPONSE_ISM330DHCX && chip_id != Reg::WHO_AM_I_RESPONSE_LSM6DSOX) {
 
         // Software reset
-        self.write_register(REG_CTRL3_C, SW_RESET).await?;
+        self.write_register(Reg::CTRL3_C, SW_RESET).await?;
 
         // Set data ready pulsed
-        self.write_register(REG_DATA_READY_PULSE_CONFIG, DATA_READY_PULSED).await?;
+        self.write_register(Reg::DATA_READY_PULSE_CONFIG, DATA_READY_PULSED).await?;
         delay_ms(1).await;
 
         // Interrupt pins are by default forced to ground, so active high
         // Enable gyro data ready on INT1 pin
-        self.write_register(REG_INT1_CTRL, INT1_DRDY_G).await?;
+        self.write_register(Reg::INT1_CTRL, INT1_DRDY_G).await?;
         delay_ms(1).await;
 
         // Enable gyro data ready on INT2 pin
-        self.write_register(REG_INT2_CTRL, INT2_DRDY_G).await?;
+        self.write_register(Reg::INT2_CTRL, INT2_DRDY_G).await?;
         delay_ms(1).await;
 
         // Block Data Update and automatically increment registers when read via serial interface (I2C or SPI)
-        self.write_register(REG_CTRL3_C, BDU | IF_INC).await?;
+        self.write_register(Reg::CTRL3_C, BDU | IF_INC).await?;
         delay_ms(1).await;
 
         let gyro_register_value =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
-        self.write_register(REG_CTRL2_G, gyro_register_value).await?;
+        self.write_register(Reg::CTRL2_G, gyro_register_value).await?;
         delay_ms(1).await;
 
         let acc_register_value =
             self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
-        self.write_register(REG_CTRL1_XL, acc_register_value).await?;
+        self.write_register(Reg::CTRL1_XL, acc_register_value).await?;
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
@@ -363,7 +368,6 @@ impl<B: ImuBus> Lsm6ds<B> {
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
     #![allow(clippy::float_cmp, clippy::unwrap_used)]
-
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
@@ -381,8 +385,8 @@ mod tests {
     #[test]
     fn imu_init() {
         let mut imu_bus = MockImuBus::new();
-        assert_eq!(0, imu_bus.registers[REG_CTRL3_C as usize]);
-        imu_bus.registers[REG_CTRL3_C as usize] = 4;
+        assert_eq!(0, imu_bus.registers[Reg::CTRL3_C as usize]);
+        imu_bus.registers[Reg::CTRL3_C as usize] = 4;
         let mut imu: Lsm6ds<MockImuBus> = Lsm6ds::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
@@ -392,10 +396,10 @@ mod tests {
         assert_eq!(6664, gyro_odr);
         assert_eq!(6664, acc_odr);
 
-        let reg = pollster::block_on(imu.read_register(REG_CTRL3_C));
+        let reg = pollster::block_on(imu.read_register(Reg::CTRL3_C));
         assert_eq!(BDU | IF_INC, reg.unwrap());
 
-        let reg = pollster::block_on(imu.read_register(REG_DATA_READY_PULSE_CONFIG));
+        let reg = pollster::block_on(imu.read_register(Reg::DATA_READY_PULSE_CONFIG));
         assert_eq!(DATA_READY_PULSED, reg.unwrap());
 
         assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);

@@ -70,10 +70,10 @@ embassy-time = { version = "0.5.1", default-features = false }
 embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
 embedded-hal-bus = { version = "0.3.0", features = ["async"] }
-esp-hal = { version = "1.2.1", default-features = false, optional = true }
+esp-hal = { version = "1.2.2", default-features = false, optional = true }
 
 cortex-m = { version = "0.7.9", optional = true }
-cortex-m-rt = { version = "0.7.6" , optional = true }
+cortex-m-rt = { version = "0.7.7" , optional = true }
 
 fixed = "1.31.0"
 defmt = { version = "1.0.1" }

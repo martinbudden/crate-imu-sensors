@@ -8,7 +8,7 @@ use super::{
 
 const I2C_ADDRESS: u8 = 0x68;
 
-// **** IMU Registers and associated bitflags ****
+/// IMU Registers.
 struct Reg;
 
 impl Reg {
@@ -194,7 +194,6 @@ impl<B: ImuBus> Mpu6886<B> {
     }
 
     /// # Errors
-    #[allow(clippy::items_after_statements)]
     pub async fn init(
         &mut self,
         target_output_data_rate_hz: u32,

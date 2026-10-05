@@ -9,8 +9,7 @@ use super::{
 const I2C_ADDRESS: u8 = 0x6A;
 const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
-// **** IMU Registers and associated bitflags ****
-
+/// IMU Registers.
 struct Reg;
 
 #[allow(unused)]

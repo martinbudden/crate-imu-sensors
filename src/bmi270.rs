@@ -9,126 +9,130 @@ use super::{
 const I2C_ADDRESS: u8 = 0x6A;
 const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
-// **** IMU Registers and associated bitflags ****
-const _REG_CHIP_ID: u8 = 0x00;
-const _REG_ERR_REG: u8 = 0x02;
-const _REG_STATUS: u8 = 0x03;
-const _REG_DATA_0: u8 = 0x04; // through to 0x0B are AUX registers
+/// IMU Registers.
+struct Reg;
 
-pub const REG_ACC_X_L: u8 = 0x0C;
-const _REG_ACC_X_H: u8 = 0x0D;
-const _REG_ACC_Y_L: u8 = 0x0E;
-const _REG_ACC_Y_H: u8 = 0x0F;
-const _REG_ACC_Z_L: u8 = 0x10;
-const _REG_ACC_Z_H: u8 = 0x11;
-const REG_GYRO_X_L: u8 = 0x12;
-const _REG_GYRO_X_H: u8 = 0x13;
-const _REG_GYRO_Y_L: u8 = 0x14;
-const _REG_GYRO_Y_H: u8 = 0x15;
-const _REG_GYRO_Z_L: u8 = 0x16;
-const _REG_GYRO_Z_H: u8 = 0x17;
+impl Reg {
+    const _CHIP_ID: u8 = 0x00;
+    const _ERR_REG: u8 = 0x02;
+    const _STATUS: u8 = 0x03;
+    const _DATA_0: u8 = 0x04; // through to 0x0B are AUX registers
 
-const _REG_SENSORTIME_0: u8 = 0x18;
-const _REG_SENSORTIME_1: u8 = 0x19;
-const _REG_SENSORTIME_3: u8 = 0x1A;
+    pub const ACC_X_L: u8 = 0x0C;
+    const _ACC_X_H: u8 = 0x0D;
+    const _ACC_Y_L: u8 = 0x0E;
+    const _ACC_Y_H: u8 = 0x0F;
+    const _ACC_Z_L: u8 = 0x10;
+    const _ACC_Z_H: u8 = 0x11;
+    const GYRO_X_L: u8 = 0x12;
+    const _GYRO_X_H: u8 = 0x13;
+    const _GYRO_Y_L: u8 = 0x14;
+    const _GYRO_Y_H: u8 = 0x15;
+    const _GYRO_Z_L: u8 = 0x16;
+    const _GYRO_Z_H: u8 = 0x17;
 
-const _REG_EVENT: u8 = 0x1B;
-const _REG_INT_STATUS_0: u8 = 0x1C;
-const _REG_INT_STATUS_1: u8 = 0x1D;
-const _REG_SC_OUT_0: u8 = 0x1E;
-const _REG_SC_OUT_1: u8 = 0x1F;
-const _REG_WR_GEST_ACT: u8 = 0x20;
-const REG_INTERNAL_STATUS: u8 = 0x21;
-const _NOT_INIT: u8 = 0x00;
-const _INIT_OK: u8 = 0x01;
-const _INIT_ERROR: u8 = 0x02;
-const _DRV_ERROR: u8 = 0x03;
-const _SENSOR_STOPPED: u8 = 0x04;
-const _NVM_ERROR: u8 = 0x05;
-const _START_UP_ERROR: u8 = 0x06;
-const _COMPATIBILITY_ERROR: u8 = 0x07;
-const _REG_TEMPERATURE_0: u8 = 0x22;
-const _REG_TEMPERATURE_1: u8 = 0x23;
-const _REG_FIFO_LENGTH_0: u8 = 0x24;
-const _REG_FIFO_LENGTH_1: u8 = 0x25;
-const _REG_FIFO_DATA: u8 = 0x26;
-const _REG_FEAT_PAGE: u8 = 0x2F;
-const _REG_FEATURES: u8 = 0x30; // 16 items
+    const _SENSORTIME_0: u8 = 0x18;
+    const _SENSORTIME_1: u8 = 0x19;
+    const _SENSORTIME_3: u8 = 0x1A;
 
-const REG_ACC_CONF: u8 = 0x40;
-const _ACC_OSR4_AVG1: u8 = 0x00;
-const _ACC_OSR4_AVG2: u8 = 0x10;
-const _ACC_NORM_AVG4: u8 = 0x20;
-const _ACC_CIC_AVG8: u8 = 0x30;
-const _REG_ACC_RANGE: u8 = 0x41;
-const REG_GYR_CONF: u8 = 0x42;
+    const _EVENT: u8 = 0x1B;
+    const _INT_STATUS_0: u8 = 0x1C;
+    const _INT_STATUS_1: u8 = 0x1D;
+    const _SC_OUT_0: u8 = 0x1E;
+    const _SC_OUT_1: u8 = 0x1F;
+    const _WR_GEST_ACT: u8 = 0x20;
+    const INTERNAL_STATUS: u8 = 0x21;
+    const _NOT_INIT: u8 = 0x00;
+    const _INIT_OK: u8 = 0x01;
+    const _INIT_ERROR: u8 = 0x02;
+    const _DRV_ERROR: u8 = 0x03;
+    const _SENSOR_STOPPED: u8 = 0x04;
+    const _NVM_ERROR: u8 = 0x05;
+    const _START_UP_ERROR: u8 = 0x06;
+    const _COMPATIBILITY_ERROR: u8 = 0x07;
+    const _TEMPERATURE_0: u8 = 0x22;
+    const _TEMPERATURE_1: u8 = 0x23;
+    const _FIFO_LENGTH_0: u8 = 0x24;
+    const _FIFO_LENGTH_1: u8 = 0x25;
+    const _FIFO_DATA: u8 = 0x26;
+    const _FEAT_PAGE: u8 = 0x2F;
+    const _FEATURES: u8 = 0x30; // 16 items
+
+    const ACC_CONF: u8 = 0x40;
+    const _ACC_OSR4_AVG1: u8 = 0x00;
+    const _ACC_OSR4_AVG2: u8 = 0x10;
+    const _ACC_NORM_AVG4: u8 = 0x20;
+    const _ACC_CIC_AVG8: u8 = 0x30;
+    const _ACC_RANGE: u8 = 0x41;
+    const GYR_CONF: u8 = 0x42;
+    const _GYR_RANGE: u8 = 0x43;
+    const _AUX_CONF: u8 = 0x44;
+    const _FIFO_DOWNS: u8 = 0x45;
+    const _FIFO_WTM_0: u8 = 0x46;
+    const _FIFO_WTM_1: u8 = 0x47;
+    const _FIFO_CONFIG_0: u8 = 0x48;
+    const FIFO_CONFIG_1: u8 = 0x49;
+    const _AUX_DEV_ID: u8 = 0x4B;
+    const _AUX_IF_CONF: u8 = 0x4C;
+    const _AUX_RD_ADDR: u8 = 0x4D;
+    const _AUX_WR_ADDR: u8 = 0x4E;
+    const _AUX_WR_DATA: u8 = 0x4F;
+
+    // reserved                                   0x50
+    // reserved                                   0x51
+    const _ERR_MASK: u8 = 0x52;
+    const INT1_IO_CTRL: u8 = 0x53;
+    const INT2_IO_CTRL: u8 = 0x54;
+    const INT_LATCH: u8 = 0x55;
+    const _INT1_MAP_FEAT: u8 = 0x56;
+    const _INT2_MAP_FEAT: u8 = 0x57;
+    const INT_MAP_DATA: u8 = 0x58;
+    const INIT_CTRL: u8 = 0x59;
+    // reserved                                   0x5A
+    const INIT_ADDR_0: u8 = 0x5B;
+    const _INIT_ADDR_1: u8 = 0x5C;
+    // reserved                                   0x5D
+    const INIT_DATA: u8 = 0x5E;
+    const _INTERNAL_ERROR: u8 = 0x5F;
+
+    // reserved                                   0x60
+    // ...
+    // reserved                                   0x67
+    const _AUX_IF_TRIM: u8 = 0x68;
+    const _GYR_CRT_CONF: u8 = 0x69;
+    const _NMV_CONF: u8 = 0x6A;
+    const _IF_CONF: u8 = 0x6B;
+    const _DRV: u8 = 0x6C;
+    const _ACC_SELF_TEST: u8 = 0x6D;
+    const _GYR_SELF_TEST: u8 = 0x6E;
+    const _NV_CONF: u8 = 0x70;
+    const _OFFSET_0: u8 = 0x71;
+    const _OFFSET_1: u8 = 0x72;
+    const _OFFSET_2: u8 = 0x73;
+    const _OFFSET_3: u8 = 0x74;
+    const _OFFSET_4: u8 = 0x75;
+    const _OFFSET_5: u8 = 0x76;
+    const _OFFSET_6: u8 = 0x77;
+    // reserved                                   0x78
+    // reserved                                   0x79
+    // reserved                                   0x7A
+    // reserved                                   0x7B
+    const PWR_CONF: u8 = 0x7C;
+    const PWR_CTRL: u8 = 0x7D;
+    const CMD: u8 = 0x7E;
+}
+
+// IMU register bitflags
 const _GYRO_OSR4: u8 = 0x00; // filter 3dB cutoff:u8 =300Hz at 3200Hz ODR
 const _GYRO_OSR2: u8 = 0x10; // filter 3dB cutoff:u8 =557Hz at 3200Hz ODR
 const _GYRO_NORM: u8 = 0x20; // filter 3dB cutoff:u8 =751Hz at 3200Hz ODR
 const _GYRO_RESERVED: u8 = 0x30;
-const _REG_GYR_RANGE: u8 = 0x43;
-const _REG_AUX_CONF: u8 = 0x44;
-const _REG_FIFO_DOWNS: u8 = 0x45;
-const _REG_FIFO_WTM_0: u8 = 0x46;
-const _REG_FIFO_WTM_1: u8 = 0x47;
-const _REG_FIFO_CONFIG_0: u8 = 0x48;
-const REG_FIFO_CONFIG_1: u8 = 0x49;
 const _FIFO_HEADER_DISABLE: u8 = 0b_0000_0000; // requires output data rates for gyro and acc to be the same
 const _FIFO_HEADER_ENABLE: u8 = 0b_0000_1000;
 const _FIFO_AUX_ENABLE: u8 = 0b_0100_0000;
 const _FIFO_ACC_ENABLE: u8 = 0b_0100_0000;
 const _FIFO_GYRO_ENABLE: u8 = 0b_1000_0000;
-const _REG_FIFO_SATURATION: u8 = 0x4A;
-const _REG_AUX_DEV_ID: u8 = 0x4B;
-const _REG_AUX_IF_CONF: u8 = 0x4C;
-const _REG_AUX_RD_ADDR: u8 = 0x4D;
-const _REG_AUX_WR_ADDR: u8 = 0x4E;
-const _REG_AUX_WR_DATA: u8 = 0x4F;
-
-// reserved                                   0x50
-// reserved                                   0x51
-const _REG_ERR_MASK: u8 = 0x52;
-const REG_INT1_IO_CTRL: u8 = 0x53;
-const REG_INT2_IO_CTRL: u8 = 0x54;
-const REG_INT_LATCH: u8 = 0x55;
-const _REG_INT1_MAP_FEAT: u8 = 0x56;
-const _REG_INT2_MAP_FEAT: u8 = 0x57;
-const REG_INT_MAP_DATA: u8 = 0x58;
-const REG_INIT_CTRL: u8 = 0x59;
-// reserved                                   0x5A
-const REG_INIT_ADDR_0: u8 = 0x5B;
-const _REG_INIT_ADDR_1: u8 = 0x5C;
-// reserved                                   0x5D
-const REG_INIT_DATA: u8 = 0x5E;
-const _REG_INTERNAL_ERROR: u8 = 0x5F;
-
-// reserved                                   0x60
-// ...
-// reserved                                   0x67
-const _REG_AUX_IF_TRIM: u8 = 0x68;
-const _REG_GYR_CRT_CONF: u8 = 0x69;
-const _REG_NMV_CONF: u8 = 0x6A;
-const _REG_IF_CONF: u8 = 0x6B;
-const _REG_DRV: u8 = 0x6C;
-const _REG_ACC_SELF_TEST: u8 = 0x6D;
-const _REG_GYR_SELF_TEST: u8 = 0x6E;
-const _REG_NV_CONF: u8 = 0x70;
-const _REG_OFFSET_0: u8 = 0x71;
-const _REG_OFFSET_1: u8 = 0x72;
-const _REG_OFFSET_2: u8 = 0x73;
-const _REG_OFFSET_3: u8 = 0x74;
-const _REG_OFFSET_4: u8 = 0x75;
-const _REG_OFFSET_5: u8 = 0x76;
-const _REG_OFFSET_6: u8 = 0x77;
-// reserved                                   0x78
-// reserved                                   0x79
-// reserved                                   0x7A
-// reserved                                   0x7B
-const REG_PWR_CONF: u8 = 0x7C;
-const REG_PWR_CTRL: u8 = 0x7D;
-const REG_CMD: u8 = 0x7E;
-
-// **** IMU Registers and associated bitflags ****
+const _FIFO_SATURATION: u8 = 0x4A;
 
 #[derive(Debug, PartialEq)]
 pub struct Bmi270<B: ImuBus> {
@@ -179,21 +183,21 @@ impl<B: ImuBus> Imu for Bmi270<B> {
 
     async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
-        self.write_read(&[REG_ACC_X_L], &mut buf).await?;
+        self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
     async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
-        self.write_read(&[REG_GYRO_X_L], &mut buf).await?;
+        self.write_read(&[Reg::GYRO_X_L], &mut buf).await?;
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
     async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         let mut buf = [0u8; 12];
-        self.write_read(&[REG_ACC_X_L], &mut buf).await?;
+        self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
 
         let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -248,55 +252,55 @@ impl<B: ImuBus> Bmi270<B> {
         const OUTPUT_ENABLE: u8 = 0b_0000_0100;
 
         // Software reset
-        self.write_register(REG_CMD, 0xB6).await?; // Soft reset
+        self.write_register(Reg::CMD, 0xB6).await?; // Soft reset
         delay_ms(1).await;
 
         delay_ms(100).await;
         // Power save disabled
-        self.write_register(REG_PWR_CONF, 0x00).await?;
+        self.write_register(Reg::PWR_CONF, 0x00).await?;
         // 450us is minimum delay required
         delay_ms(1).await;
 
         // prepare config load
-        self.write_register(REG_INIT_CTRL, 0x00).await?;
+        self.write_register(Reg::INIT_CTRL, 0x00).await?;
         delay_ms(1).await;
 
         // Write 8kB initialization data to Register INIT_DATA. This requires 6.6ms at 10 MHz SPI I/F frequency.
         _ = self.load_configuration_data().await?;
 
         // enable gyro, acc and temp sensors
-        self.write_register(REG_PWR_CTRL, 0x0E).await?;
+        self.write_register(Reg::PWR_CTRL, 0x0E).await?;
         delay_ms(1).await;
 
         // disable advanced power save, enable FIFO self-wake - power mode
-        self.write_register(REG_PWR_CONF, 0x02).await?;
+        self.write_register(Reg::PWR_CONF, 0x02).await?;
         delay_ms(1).await;
 
         // all FIFOs disabled
-        self.write_register(REG_FIFO_CONFIG_1, 0x00).await?;
+        self.write_register(Reg::FIFO_CONFIG_1, 0x00).await?;
         delay_ms(1).await;
 
         // configure interrupts
         // enable the data ready interrupt pins 1 and 2
-        self.write_register(REG_INT_MAP_DATA, DATA_READY_INI_1 | DATA_READY_INI_2).await?;
+        self.write_register(Reg::INT_MAP_DATA, DATA_READY_INI_1 | DATA_READY_INI_2).await?;
         delay_ms(1).await;
         // input disabled, push-pull are defaults
-        self.write_register(REG_INT1_IO_CTRL, OUTPUT_ENABLE | ACTIVE_HIGH).await?;
+        self.write_register(Reg::INT1_IO_CTRL, OUTPUT_ENABLE | ACTIVE_HIGH).await?;
         delay_ms(1).await;
         // input disabled, push-pull are defaults
-        self.write_register(REG_INT2_IO_CTRL, OUTPUT_ENABLE | ACTIVE_HIGH).await?;
+        self.write_register(Reg::INT2_IO_CTRL, OUTPUT_ENABLE | ACTIVE_HIGH).await?;
         delay_ms(1).await;
         // interrupt latching off
-        self.write_register(REG_INT_LATCH, 0).await?;
+        self.write_register(Reg::INT_LATCH, 0).await?;
         delay_ms(1).await;
 
         let gyro_register_value =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
-        self.write_register(REG_GYR_CONF, gyro_register_value).await?;
+        self.write_register(Reg::GYR_CONF, gyro_register_value).await?;
 
         let acc_register_value =
             self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
-        self.write_register(REG_ACC_CONF, acc_register_value).await?;
+        self.write_register(Reg::ACC_CONF, acc_register_value).await?;
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
@@ -396,17 +400,17 @@ impl<B: ImuBus> Bmi270<B> {
         #[allow(clippy::cast_possible_truncation)]
         const ADDRESS_ARRAY: [u8; 2] = [((DATA_SIZE >> 1) & 0x0F) as u8, (DATA_SIZE >> 5) as u8];
         const BUS_WRITE_CHUNK_SIZE: usize = 32;
-        self.bus.write_registers(self.config.address, REG_INIT_ADDR_0, &ADDRESS_ARRAY).await?;
+        self.bus.write_registers(self.config.address, Reg::INIT_ADDR_0, &ADDRESS_ARRAY).await?;
 
         for ii in (0..DATA_SIZE).step_by(BUS_WRITE_CHUNK_SIZE) {
             let chunk = &IMU_BMI270_CONFIG_DATA[ii..ii + BUS_WRITE_CHUNK_SIZE];
-            self.bus.write_registers(self.config.address, REG_INIT_DATA, chunk).await?;
+            self.bus.write_registers(self.config.address, Reg::INIT_DATA, chunk).await?;
         }
 
         // complete config load
-        self.write_register(REG_INIT_CTRL, 0x01).await?;
+        self.write_register(Reg::INIT_CTRL, 0x01).await?;
         delay_ms(10).await;
-        let internal_status = self.bus.read_register(self.config.address, REG_INTERNAL_STATUS).await?;
+        let internal_status = self.bus.read_register(self.config.address, Reg::INTERNAL_STATUS).await?;
         //assert(internal_status == INIT_OK || internal_status == SENSOR_STOPPED);
         Ok(internal_status)
     }
@@ -869,15 +873,15 @@ mod tests {
     #[test]
     fn imu_init() {
         let mut imu_bus = MockImuBus::new();
-        assert_eq!(0, imu_bus.registers[REG_ACC_X_L as usize]);
-        imu_bus.registers[REG_ACC_X_L as usize] = 4;
+        assert_eq!(0, imu_bus.registers[Reg::ACC_X_L as usize]);
+        imu_bus.registers[Reg::ACC_X_L as usize] = 4;
         let mut imu: Bmi270<MockImuBus> = Bmi270::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
             pollster::block_on(imu.init(3200, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
         let (gyro_odr, acc_odr) = result.unwrap();
 
-        let reg = pollster::block_on(imu.read_register(REG_CMD));
+        let reg = pollster::block_on(imu.read_register(Reg::CMD));
         assert_eq!(0xB6, reg.unwrap());
 
         assert_eq!(3200, gyro_odr);

@@ -63,6 +63,7 @@ impl PostcardValue<'_> for ImuAxisOrder {}
 impl ImuAxisOrder {
     pub const COUNT: u8 = 28;
 
+    /// Forgiving conversion from u8 to `ImuAxisOrder`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {

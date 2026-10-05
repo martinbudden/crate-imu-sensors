@@ -9,123 +9,127 @@ use super::{
 const I2C_ADDRESS: u8 = 0x6A;
 const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
-// **** IMU Registers and associated bitflags ****
-const _REG_SENSOR_CONFIG0: u8 = 0x03;
+/// IMU Registers.
+struct Reg;
 
-const REG_DEVICE_CONFIG: u8 = 0x11;
+impl Reg {
+    const _SENSOR_CONFIG0: u8 = 0x03;
+
+    const DEVICE_CONFIG: u8 = 0x11;
+    const INT_CONFIG: u8 = 0x14;
+    const _FIFO_CONFIG: u8 = 0x16;
+
+    const _TEMP_DATA1: u8 = 0x1D;
+    const _TEMP_DATA0: u8 = 0x1E;
+    const ACCEL_DATA_X1: u8 = 0x1F;
+    const _ACCEL_DATA_X0: u8 = 0x20;
+    const _ACCEL_DATA_Y1: u8 = 0x21;
+    const _ACCEL_DATA_Y0: u8 = 0x22;
+    const _ACCEL_DATA_Z1: u8 = 0x23;
+    const _ACCEL_DATA_Z0: u8 = 0x24;
+    const GYRO_DATA_X1: u8 = 0x25;
+    const _GYRO_DATA_X0: u8 = 0x26;
+    const _GYRO_DATA_Y1: u8 = 0x27;
+    const _GYRO_DATA_Y0: u8 = 0x28;
+    const _GYRO_DATA_Z1: u8 = 0x29;
+    const _GYRO_DATA_Z0: u8 = 0x2A;
+
+    const _TMST_FSYNCH: u8 = 0x2B;
+    const _TMST_FSYNCHL: u8 = 0x2C;
+    const _INT_STATUS: u8 = 0x2D;
+
+    const _FIFO_COUNTH: u8 = 0x2E;
+    const _FIFO_COUNTL: u8 = 0x2F;
+    const _FIFO_DATA: u8 = 0x30;
+
+    const _APEX_DATA0: u8 = 0x31;
+    const _APEX_DATA1: u8 = 0x33;
+    const _APEX_DATA2: u8 = 0x34;
+    const _APEX_DATA3: u8 = 0x34;
+    const _APEX_DATA4: u8 = 0x35;
+    const _APEX_DATA5: u8 = 0x36;
+
+    const _INT_STATUS2: u8 = 0x37;
+    const _INT_STATUS3: u8 = 0x38;
+
+    const _SIGNAL_PATH_RESET: u8 = 0x4B;
+    const INTF_CONFIG0: u8 = 0x4C;
+    const INTF_CONFIG1: u8 = 0x4D;
+    const _AFSR_DISABLE: u8 = 0x40;
+
+    const PWR_MGMT0: u8 = 0x4E;
+
+    const GYRO_CONFIG0: u8 = 0x4F;
+    const ACCEL_CONFIG0: u8 = 0x50;
+    const _GYRO_CONFIG1: u8 = 0x51;
+    const GYRO_ACCEL_CONFIG0: u8 = 0x52;
+    const _ACCEL_CONFIG1: u8 = 0x53;
+
+    const _TMST_CONFIG: u8 = 0x54;
+    const _APEX_CONFIG: u8 = 0x56;
+    const _SMD_CONFIG: u8 = 0x57;
+    const _FIFO_CONFIG1: u8 = 0x5F;
+    const _FIFO_CONFIG2: u8 = 0x60;
+    const _FIFO_CONFIG3: u8 = 0x61;
+    const _FSYNC_CONFIG: u8 = 0x62;
+    const INT_CONFIG0: u8 = 0x63;
+    const INT_CONFIG1: u8 = 0x64;
+
+    const INT_SOURCE0: u8 = 0x65;
+    const _INT_SOURCE1: u8 = 0x66;
+    const _INT_SOURCE3: u8 = 0x68;
+    const _INT_SOURCE4: u8 = 0x69;
+
+    const _FIFO_LOST_PKT0: u8 = 0x6C;
+    const _FIFO_LOST_PKT1: u8 = 0x6D;
+    const _SELF_TEST_CONFIG3: u8 = 0x70;
+
+    const _WHO_AM_I: u8 = 0x75;
+    const _WHO_AM_I_RESPONSE_ICM42605: u8 = 0x43;
+    const _WHO_AM_I_RESPONSE_ICM42688P: u8 = 0x47;
+
+    const BANK_SEL: u8 = 0x76;
+    const _INTF_CONFIG4: u8 = 0x7A;
+    const _INTF_CONFIG5: u8 = 0x7B;
+    const _INTF_CONFIG6: u8 = 0x7C;
+
+    // User Bank 1 Register Map
+    const _BANK1_GYRO_CONFIG_STATIC2: u8 = 0x0B;
+    const BANK1_GYRO_CONFIG_STATIC3: u8 = 0x0C;
+    const BANK1_GYRO_CONFIG_STATIC4: u8 = 0x0D;
+    const BANK1_GYRO_CONFIG_STATIC5: u8 = 0x0E;
+    const _BANK1_GYRO_CONFIG_STATIC6: u8 = 0x0F;
+    const _BANK1_GYRO_CONFIG_STATIC7: u8 = 0x10;
+    const _BANK1_GYRO_CONFIG_STATIC8: u8 = 0x11;
+    const _BANK1_GYRO_CONFIG_STATIC9: u8 = 0x12;
+    const _BANK1_GYRO_CONFIG_STATIC10: u8 = 0x13;
+
+    // User Bank 2 Register Map
+    const _BANK2_ACCEL_CONFIG_STATIC2: u8 = 0x03;
+    const _BANK2_ACCEL_CONFIG_STATIC3: u8 = 0x04;
+    const _BANK2_ACCEL_CONFIG_STATIC4: u8 = 0x05;
+}
+
+// IMU register bitflags
 const DEVICE_CONFIG_DEFAULT: u8 = 0b_0000_0000;
-const REG_INT_CONFIG: u8 = 0x14;
 const _INT1_MODE_LATCHED: u8 = 0b_0000_0100;
 const INT1_MODE_PULSED: u8 = 0b_0000_0000;
 const INT1_DRIVE_CIRCUIT_PUSH_PULL: u8 = 0b_0000_0010;
 const INT1_POLARITY_ACTIVE_HIGH: u8 = 0b_0000_0001;
-const _REG_FIFO_CONFIG: u8 = 0x16;
-
-const _REG_TEMP_DATA1: u8 = 0x1D;
-const _REG_TEMP_DATA0: u8 = 0x1E;
-const REG_ACCEL_DATA_X1: u8 = 0x1F;
-const _REG_ACCEL_DATA_X0: u8 = 0x20;
-const _REG_ACCEL_DATA_Y1: u8 = 0x21;
-const _REG_ACCEL_DATA_Y0: u8 = 0x22;
-const _REG_ACCEL_DATA_Z1: u8 = 0x23;
-const _REG_ACCEL_DATA_Z0: u8 = 0x24;
-const REG_GYRO_DATA_X1: u8 = 0x25;
-const _REG_GYRO_DATA_X0: u8 = 0x26;
-const _REG_GYRO_DATA_Y1: u8 = 0x27;
-const _REG_GYRO_DATA_Y0: u8 = 0x28;
-const _REG_GYRO_DATA_Z1: u8 = 0x29;
-const _REG_GYRO_DATA_Z0: u8 = 0x2A;
-
-const _REG_TMST_FSYNCH: u8 = 0x2B;
-const _REG_TMST_FSYNCHL: u8 = 0x2C;
-const _REG_INT_STATUS: u8 = 0x2D;
-
-const _REG_FIFO_COUNTH: u8 = 0x2E;
-const _REG_FIFO_COUNTL: u8 = 0x2F;
-const _REG_FIFO_DATA: u8 = 0x30;
-
-const _REG_APEX_DATA0: u8 = 0x31;
-const _REG_APEX_DATA1: u8 = 0x33;
-const _REG_APEX_DATA2: u8 = 0x34;
-const _REG_APEX_DATA3: u8 = 0x34;
-const _REG_APEX_DATA4: u8 = 0x35;
-const _REG_APEX_DATA5: u8 = 0x36;
-
-const _REG_INT_STATUS2: u8 = 0x37;
-const _REG_INT_STATUS3: u8 = 0x38;
-
-const _REG_SIGNAL_PATH_RESET: u8 = 0x4B;
-const REG_INTF_CONFIG0: u8 = 0x4C;
 const _SENSOR_DATA_BIG_ENDIAN: u8 = 0b_0001_0000; // default
 const SENSOR_DATA_LITTLE_ENDIAN: u8 = 0b_0000_0000; // datasheet gives very little information on how this works
 const UI_SIFS_CFG_DISABLE_I2C: u8 = 0b_0000_0011;
-const REG_INTF_CONFIG1: u8 = 0x4D;
-const _AFSR_DISABLE: u8 = 0x40;
-
-const REG_PWR_MGMT0: u8 = 0x4E;
 const PWR_OFF: u8 = 0x00;
 const PWR_TEMP_ENABLED: u8 = 0b_0000_0000;
 const PWR_GYRO_LOW_NOISE: u8 = 0b_0000_1100;
 const PWR_ACCEL_LOW_NOISE: u8 = 0b_0000_0011;
-
-const REG_GYRO_CONFIG0: u8 = 0x4F;
-
-const REG_ACCEL_CONFIG0: u8 = 0x50;
-
-const _REG_GYRO_CONFIG1: u8 = 0x51;
-const REG_GYRO_ACCEL_CONFIG0: u8 = 0x52;
 const ACCEL_FILTER_LOW_LATENCY: u8 = 0b_1111_0000;
 const GYRO_FILTER_LOW_LATENCY: u8 = 0b_0000_1111;
-const _REG_ACCEL_CONFIG1: u8 = 0x53;
-
-const _REG_TMST_CONFIG: u8 = 0x54;
-const _REG_APEX_CONFIG: u8 = 0x56;
-const _REG_SMD_CONFIG: u8 = 0x57;
-const _REG_FIFO_CONFIG1: u8 = 0x5F;
-const _REG_FIFO_CONFIG2: u8 = 0x60;
-const _REG_FIFO_CONFIG3: u8 = 0x61;
-const _REG_FSYNC_CONFIG: u8 = 0x62;
-const REG_INT_CONFIG0: u8 = 0x63;
 const INT_CLEAR_ON_STATUS_BIT_READ: u8 = 0b_0000_0000;
-const REG_INT_CONFIG1: u8 = 0x64;
 const _INT_ASYNC_RESET: u8 = 0b_0000_1000; // this bit should be set to 0 for proper INT1 and INT2 pin operation
 const INT_TPULSE_DURATION_8US: u8 = 0b_0100_0000; // interrupt puls duration 8us, required for ODR >=4kHz
 const INT_TDEASSERT_DISABLE: u8 = 0b_0010_0000; // required for ODR >= 4kHz
-
-const REG_INT_SOURCE0: u8 = 0x65;
 const INT1_UI_DATA_READY_ENABLED: u8 = 0b_0000_1000;
-const _REG_INT_SOURCE1: u8 = 0x66;
-const _REG_INT_SOURCE3: u8 = 0x68;
-const _REG_INT_SOURCE4: u8 = 0x69;
-
-const _REG_FIFO_LOST_PKT0: u8 = 0x6C;
-const _REG_FIFO_LOST_PKT1: u8 = 0x6D;
-const _REG_SELF_TEST_CONFIG3: u8 = 0x70;
-
-const _REG_WHO_AM_I: u8 = 0x75;
-const _WHO_AM_I_RESPONSE_ICM42605: u8 = 0x43;
-const _WHO_AM_I_RESPONSE_ICM42688P: u8 = 0x47;
-
-const REG_BANK_SEL: u8 = 0x76;
-const _REG_INTF_CONFIG4: u8 = 0x7A;
-const _REG_INTF_CONFIG5: u8 = 0x7B;
-const _REG_INTF_CONFIG6: u8 = 0x7C;
-
-// User Bank 1 Register Map
-const _REG_BANK1_GYRO_CONFIG_STATIC2: u8 = 0x0B;
-const REG_BANK1_GYRO_CONFIG_STATIC3: u8 = 0x0C;
-const REG_BANK1_GYRO_CONFIG_STATIC4: u8 = 0x0D;
-const REG_BANK1_GYRO_CONFIG_STATIC5: u8 = 0x0E;
-const _REG_BANK1_GYRO_CONFIG_STATIC6: u8 = 0x0F;
-const _REG_BANK1_GYRO_CONFIG_STATIC7: u8 = 0x10;
-const _REG_BANK1_GYRO_CONFIG_STATIC8: u8 = 0x11;
-const _REG_BANK1_GYRO_CONFIG_STATIC9: u8 = 0x12;
-const _REG_BANK1_GYRO_CONFIG_STATIC10: u8 = 0x13;
-
-// User Bank 2 Register Map
-const _REG_BANK2_ACCEL_CONFIG_STATIC2: u8 = 0x03;
-const _REG_BANK2_ACCEL_CONFIG_STATIC3: u8 = 0x04;
-const _REG_BANK2_ACCEL_CONFIG_STATIC4: u8 = 0x05;
 
 #[allow(missing_docs)]
 #[derive(Debug, PartialEq)]
@@ -177,21 +181,21 @@ impl<B: ImuBus> Imu for Imu426xx<B> {
 
     async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
-        self.write_read(&[REG_ACCEL_DATA_X1], &mut buf).await?;
+        self.write_read(&[Reg::ACCEL_DATA_X1], &mut buf).await?;
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
     async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
-        self.write_read(&[REG_GYRO_DATA_X1], &mut buf).await?;
+        self.write_read(&[Reg::GYRO_DATA_X1], &mut buf).await?;
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
     async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         let mut buf = [0u8; 12];
-        self.write_read(&[REG_GYRO_DATA_X1], &mut buf).await?;
+        self.write_read(&[Reg::GYRO_DATA_X1], &mut buf).await?;
 
         let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -241,14 +245,14 @@ impl<B: ImuBus> Imu426xx<B> {
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
-        self.write_register(REG_BANK_SEL, 0).await?;
-        self.write_register(REG_PWR_MGMT0, PWR_OFF).await?;
+        self.write_register(Reg::BANK_SEL, 0).await?;
+        self.write_register(Reg::PWR_MGMT0, PWR_OFF).await?;
 
         // default reset configuration
-        self.write_register(REG_DEVICE_CONFIG, DEVICE_CONFIG_DEFAULT).await?;
+        self.write_register(Reg::DEVICE_CONFIG, DEVICE_CONFIG_DEFAULT).await?;
         delay_ms(1).await;
 
-        /*let chip_id = self.bus.read_register_with_timeout(REG_WHO_AM_I, 100);
+        /*let chip_id = self.bus.read_register_with_timeout(Reg::WHO_AM_I, 100);
         if chip_id != WHO_AM_I_RESPONSE_ICM42605 && chip_id != WHO_AM_I_RESPONSE_ICM42688P {
             return NOT_DETECTED;
         }*/
@@ -259,57 +263,57 @@ impl<B: ImuBus> Imu426xx<B> {
             const GYRO_AAF_DELT: u8 = 38;
             const GYRO_AAF_DELTSQR: u16 = 1440;
             const GYRO_AAF_BITSH: u8 = 4; // gives 3dB Bandwidth of 2029 Hz
-            self.write_register(REG_BANK_SEL, 1).await?;
-            self.write_register(REG_BANK1_GYRO_CONFIG_STATIC3, GYRO_AAF_DELT).await?;
-            self.write_register(REG_BANK1_GYRO_CONFIG_STATIC4, (GYRO_AAF_DELTSQR & 0xFF) as u8).await?;
-            self.write_register(REG_BANK1_GYRO_CONFIG_STATIC5, (GYRO_AAF_BITSH << 4) | (GYRO_AAF_DELTSQR >> 8) as u8)
+            self.write_register(Reg::BANK_SEL, 1).await?;
+            self.write_register(Reg::BANK1_GYRO_CONFIG_STATIC3, GYRO_AAF_DELT).await?;
+            self.write_register(Reg::BANK1_GYRO_CONFIG_STATIC4, (GYRO_AAF_DELTSQR & 0xFF) as u8).await?;
+            self.write_register(Reg::BANK1_GYRO_CONFIG_STATIC5, (GYRO_AAF_BITSH << 4) | (GYRO_AAF_DELTSQR >> 8) as u8)
                 .await?;
         }
-        self.write_register(REG_BANK_SEL, 0).await?;
+        self.write_register(Reg::BANK_SEL, 0).await?;
 
-        // REG_GYRO_CONFIG1 defaults to first order gyro ui filter, 3rd order GYRO_DEC2_M2_ORD filter, so is left unchanged
-        self.write_register(REG_GYRO_ACCEL_CONFIG0, ACCEL_FILTER_LOW_LATENCY | GYRO_FILTER_LOW_LATENCY).await?;
+        // Reg::GYRO_CONFIG1 defaults to first order gyro ui filter, 3rd order GYRO_DEC2_M2_ORD filter, so is left unchanged
+        self.write_register(Reg::GYRO_ACCEL_CONFIG0, ACCEL_FILTER_LOW_LATENCY | GYRO_FILTER_LOW_LATENCY).await?;
 
         // Configure interrupts
         self.write_register(
-            REG_INT_CONFIG,
+            Reg::INT_CONFIG,
             INT1_MODE_PULSED | INT1_DRIVE_CIRCUIT_PUSH_PULL | INT1_POLARITY_ACTIVE_HIGH,
         )
         .await?;
-        self.write_register(REG_INT_CONFIG0, INT_CLEAR_ON_STATUS_BIT_READ).await?;
+        self.write_register(Reg::INT_CONFIG0, INT_CLEAR_ON_STATUS_BIT_READ).await?;
 
         // set interrupt pulse duration to 8us and disable de-assert duration, both required for ODR >= 4kHz
-        self.write_register(REG_INT_CONFIG1, INT_TPULSE_DURATION_8US | INT_TDEASSERT_DISABLE).await?;
-        self.write_register(REG_INT_SOURCE0, INT1_UI_DATA_READY_ENABLED).await?;
+        self.write_register(Reg::INT_CONFIG1, INT_TPULSE_DURATION_8US | INT_TDEASSERT_DISABLE).await?;
+        self.write_register(Reg::INT_SOURCE0, INT1_UI_DATA_READY_ENABLED).await?;
 
         // Configure INTF
-        self.write_register(REG_INTF_CONFIG0, SENSOR_DATA_LITTLE_ENDIAN | UI_SIFS_CFG_DISABLE_I2C).await?;
+        self.write_register(Reg::INTF_CONFIG0, SENSOR_DATA_LITTLE_ENDIAN | UI_SIFS_CFG_DISABLE_I2C).await?;
         {
             // Disable AFSR to prevent stalls in gyro output (undocumented in datasheet)
             const CONFIG1_DEFAULT_VALUE: u8 = 0b_1001_0001;
             const CONFIG1_AFSR_MASK: u8 = 0b_0011_1111;
             const CONFIG1_AFSR_DISABLE: u8 = 0b_0100_0000;
-            //let  intFConfig1 = self.bus.read_register(REG_INTF_CONFIG1);
+            //let  intFConfig1 = self.bus.read_register(Reg::INTF_CONFIG1);
             //intFConfig1 &= CONFIG1_AFSR_MASK;
             //intFConfig1 |= CONFIG1_AFSR_DISABLE;
-            //self.write_register(REG_INTF_CONFIG1, intFConfig1);
-            self.write_register(REG_INTF_CONFIG1, (CONFIG1_DEFAULT_VALUE & CONFIG1_AFSR_MASK) | CONFIG1_AFSR_DISABLE)
+            //self.write_register(Reg::INTF_CONFIG1, intFConfig1);
+            self.write_register(Reg::INTF_CONFIG1, (CONFIG1_DEFAULT_VALUE & CONFIG1_AFSR_MASK) | CONFIG1_AFSR_DISABLE)
                 .await?;
         }
 
         // Turn on gyro and acc on before configuring Output Data Rate(ODR) and Full Scale Rate (FSRP)
-        self.write_register(REG_PWR_MGMT0, PWR_TEMP_ENABLED | PWR_GYRO_LOW_NOISE | PWR_ACCEL_LOW_NOISE).await?;
+        self.write_register(Reg::PWR_MGMT0, PWR_TEMP_ENABLED | PWR_GYRO_LOW_NOISE | PWR_ACCEL_LOW_NOISE).await?;
         delay_ms(1).await;
 
         let gyro_register_value =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
 
-        self.write_register(REG_GYRO_CONFIG0, gyro_register_value).await?;
+        self.write_register(Reg::GYRO_CONFIG0, gyro_register_value).await?;
         delay_ms(1).await;
 
         let acc_register_value =
             self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
-        self.write_register(REG_ACCEL_CONFIG0, acc_register_value).await?;
+        self.write_register(Reg::ACCEL_CONFIG0, acc_register_value).await?;
         delay_ms(1).await;
 
         // return the gyro and acc sample rates actually set
@@ -344,7 +348,7 @@ impl<B: ImuBus> Imu426xx<B> {
         const GYRO_ODR_12_P_5_HZ: u8 = 0b_0000_1011;
         const GYRO_ODR_500_HZ: u8 = 0b_0000_1111;
 
-        // calculate the GYRO_RANGE bit values to write to the REG_GYRO_CONFIG0 register
+        // calculate the GYRO_RANGE bit values to write to the Reg::GYRO_CONFIG0 register
         let (scale_dps, gyro_register_value) = match gyro_sensitivity {
             GyroFullScale::Scale125Dps => (125.0 / 32768.0, GYRO_RANGE_125_DPS),
             GyroFullScale::Scale250Dps => (250.0 / 32768.0, GYRO_RANGE_250_DPS),
@@ -354,7 +358,7 @@ impl<B: ImuBus> Imu426xx<B> {
         };
         self.common.gyro_scale = if gyro_units == GyroUnits::Dps { scale_dps } else { scale_dps.to_radians() };
 
-        // calculate the GYRO_ODR bit values to write to the REG_GYRO_CONFIG0 register
+        // calculate the GYRO_ODR bit values to write to the Reg::GYRO_CONFIG0 register
         let (gyro_sample_rate_hz, gyro_odr) = match target_output_data_rate_hz {
             8001..=16_000 => (16_000, GYRO_ODR_16000_HZ),
             0 | 4001..=8000 => (8000, GYRO_ODR_8000_HZ),
@@ -398,7 +402,7 @@ impl<B: ImuBus> Imu426xx<B> {
         const ACCEL_ODR_12_P_5_HZ: u8 = 0b_0000_1011;
         const ACCEL_ODR_500_HZ: u8 = 0b_0000_1111;
 
-        // calculate the ACCEL_ODR bit values to write to the REG_ACCEL_CONFIG0 register
+        // calculate the ACCEL_ODR bit values to write to the Reg::ACCEL_CONFIG0 register
         let (scale, acc_register_value) = match acc_sensitivity {
             AccFullScale::Scale2G => (2.0 / 32768.0, ACCEL_RANGE_2G),
             AccFullScale::Scale4G => (4.0 / 32768.0, ACCEL_RANGE_4G),
@@ -434,7 +438,6 @@ impl<B: ImuBus> Imu426xx<B> {
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
     #![allow(clippy::float_cmp, clippy::unwrap_used)]
-
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
@@ -461,6 +464,7 @@ mod tests {
 
         assert_eq!(8000, gyro_odr);
         assert_eq!(8000, acc_odr);
+
         assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
         assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
         assert_eq!(8000, imu.common.gyro_sample_rate_hz);
