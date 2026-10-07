@@ -18,6 +18,7 @@
         "bitflags",
         "BITSH",
         "bootsel",
+        "bsrr",
         "bstr",
         "Budden",
         "bumpalo",

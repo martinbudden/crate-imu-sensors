@@ -38,23 +38,7 @@ test-storage = "test --no-default-features --features std,storage --target x86_6
 
 test-host = "test --no-default-features --features std,libm --target x86_64-unknown-linux-gnu"
 
-check-rp2040 = [
-    "check",
-    "--target", "thumbv6m-none-eabi",
-    "--no-default-features",
-    "--features",
-    "rp2040"
-]
-
-check-rp235xa = [
-    "check",
-    "--target", "thumbv8m.main-none-eabihf",
-    "--no-default-features",
-    "--features",
-    "rp235xa"
-]
-
-check-esp32s3 = "run --manifest-path xtask/Cargo.toml -- check-esp32s3"
+#check-esp32s3 = "run --manifest-path xtask/Cargo.toml -- check-esp32s3"
 
 # Continuous Integration
 ci = "run --package xtask --bin xtask"

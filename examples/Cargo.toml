@@ -13,11 +13,9 @@ all-features = true
 
 [features]
 
-default = ["rp235xa"]
+#default = ["rp235xa"]
 
-rp = ["dep:embassy-rp"] # combined feature for all rp variants
 rp2040 = [
-    "rp",
     "dep:embassy-rp",
     "dep:cortex-m",
     "dep:cortex-m-rt",
@@ -27,7 +25,6 @@ rp2040 = [
     "imu-sensors/rp2040"
 ]
 rp235xa = [
-    "rp",
     "dep:embassy-rp",
     "dep:cortex-m",
     "dep:cortex-m-rt",
@@ -37,7 +34,6 @@ rp235xa = [
     "imu-sensors/rp235xa"
 ]
 rp235xb = [
-    "rp",
     "dep:embassy-rp",
     "dep:cortex-m",
     "dep:cortex-m-rt",

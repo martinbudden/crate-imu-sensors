@@ -1,5 +1,4 @@
-#![allow(unused)]
-use super::MockImuBus;
+#[allow(unused)]
 pub struct I2cInterface<B> {
     pub bus: B,
     pub address: u8,
@@ -8,6 +7,7 @@ pub struct I2cInterface<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::imu_bus_mock::MockImuBus;
 
     #[allow(unused)]
     fn is_normal<T: Sized + Send + Sync + Unpin>() {}

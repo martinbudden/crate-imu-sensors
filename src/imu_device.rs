@@ -1,13 +1,6 @@
 use vqm::Vector3f32;
 
-use super::{AccFullScale, AccUnits, GyroFullScale, GyroUnits};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ImuError {
-    SpiBus,
-    I2cBus,
-    MissingRegister,
-}
+use super::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuError};
 
 #[allow(async_fn_in_trait)]
 pub trait ImuDevice {

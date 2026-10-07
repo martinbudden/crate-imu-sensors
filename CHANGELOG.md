@@ -9,17 +9,24 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
-## [0.1.5] - 2026-10-01
-
-### Changed
-
-- updated to `vqm` `0.1.17`.
-- split `serde` feature into `serde` and `storage`.
-- updated to Rust version 1.89.
+## [0.1.5] - 2026-10-07
 
 ### Added
 
-- support for continuous integration.
+- Support for continuous integration.
+- Examples.
+
+### Changed
+
+- Updated to `vqm` `0.1.17`.
+- Split `serde` feature into `serde` and `storage`.
+- Updated to Rust version 1.89.
+- Simplified error handling by using `ImuError` enum.
+- Change to use `Reg` `struct` for IMU register constants.
+
+### Removed
+
+- Removed unneeded inclusions of `embassy-rp`, `embassy-stm32`, `esp-hal`, and `xtensa-lx` from `Cargo.toml`.
 
 ## [0.1.4] - 2026-09-05
 
