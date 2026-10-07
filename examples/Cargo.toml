@@ -13,7 +13,6 @@ all-features = true
 
 [features]
 
-#default = ["rp235xa"]
 
 rp2040 = [
     "dep:embassy-rp",
@@ -21,8 +20,8 @@ rp2040 = [
     "dep:cortex-m-rt",
     "embassy-executor/platform-cortex-m",
     "embassy-rp/time-driver",
+    "embassy-rp/critical-section-impl",
     "embassy-rp/rp2040",
-    "imu-sensors/rp2040"
 ]
 rp235xa = [
     "dep:embassy-rp",
@@ -30,8 +29,8 @@ rp235xa = [
     "dep:cortex-m-rt",
     "embassy-executor/platform-cortex-m",
     "embassy-rp/time-driver",
+    "embassy-rp/critical-section-impl",
     "embassy-rp/rp235xa",
-    "imu-sensors/rp235xa"
 ]
 rp235xb = [
     "dep:embassy-rp",
@@ -39,8 +38,8 @@ rp235xb = [
     "dep:cortex-m-rt",
     "embassy-executor/platform-cortex-m",
     "embassy-rp/time-driver",
+    "embassy-rp/critical-section-impl",
     "embassy-rp/rp235xb",
-    "imu-sensors/rp235xb"
 ]
 stm32 = [
     "dep:embassy-stm32",
@@ -48,12 +47,10 @@ stm32 = [
     "dep:cortex-m-rt",
     "embassy-executor/platform-cortex-m",
     "embassy-stm32/time-driver-tim2",
-    "imu-sensors/stm32",
 ]
 stm32f405 = ["embassy-stm32/stm32f405rg"]
 esp32s32 = [
     "dep:esp-hal",
-    "imu-sensors/esp32s3"
 ]
 
 [dependencies]
@@ -65,7 +62,7 @@ embassy-time = { version = "0.5.1", default-features = false }
 # Hardware-specific Embassy HAL
 embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
-embedded-hal-bus = { version = "0.3.0", features = ["async"] }
+embedded-hal-bus = { version = "0.3.0", features = ["async"] } # for SPI
 esp-hal = { version = "1.2.2", default-features = false, optional = true }
 
 cortex-m = { version = "0.7.9", optional = true }
@@ -90,3 +87,5 @@ path = "src/lsm6ds_rp_spi.rs"
 debug = 2
 lto = false
 opt-level = 2
+
+[workspace]

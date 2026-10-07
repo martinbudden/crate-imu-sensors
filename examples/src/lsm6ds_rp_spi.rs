@@ -1,7 +1,10 @@
-//! Minimal test for motor mixer.
+//! Minimal LSM6DS SPI example.
 //! Hardware: Raspberry Pi Pico / Pico 2
 //! Connections:
-//!   - ESC signal: PINs 11-14
+//!   - SPI SCK   PIN_18
+//!   - SPI MOSI  PIN_19
+//!   - SPI MISO  PIN_16
+//!   - SPI CS    PIN_17
 #![no_std]
 #![no_main]
 
@@ -35,7 +38,7 @@ async fn main(_spawner: Spawner) {
     let cs = Output::new(p.PIN_17, Level::High);
 
     let mut spi_config = SpiConfig::default();
-    spi_config.frequency = 10_000_000;
+    spi_config.frequency = 1_000_000;
     let spi = Spi::new(p.SPI0, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Irqs, spi_config);
 
     let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
@@ -50,17 +53,22 @@ async fn main(_spawner: Spawner) {
     // Print system clock for verification
     let sys_freq = clk_sys_freq();
     info!("System clock: {} Hz", sys_freq);
-    info!("Starting imu-sensors rp spi test");
+    info!("Starting imu-sensors RP SPI test");
 
     info!("Reading IMU indefinitely");
     let mut count: u32 = 0;
     loop {
-        let acc = imu.read_acc().await.unwrap();
-        info!("acc x:{} y:{} z:{}", acc.x, acc.y, acc.z);
+        if let Ok(acc) = imu.read_acc().await {
+            info!("acc x:{} y:{} z:{}", acc.x, acc.y, acc.z);
+        } else {
+            info!("IMU read_acc failed");
+        }
+
+        // Read the accelerometer at approximately 1 kHz.
         Timer::after(Duration::from_millis(1)).await;
         count = count.wrapping_add(1);
         if count.is_multiple_of(1000) {
-            info!("Running... {} frames sent", count);
+            info!("Running... {} samples read", count);
         }
     }
 }

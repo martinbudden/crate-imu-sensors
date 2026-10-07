@@ -1,7 +1,8 @@
-//! Minimal test for motor mixer.
+//! Minimal LSM6DS I2C example.
 //! Hardware: Raspberry Pi Pico / Pico 2
 //! Connections:
-//!   - ESC signal: PINs 11-14
+//!   - I2C SDA  PIN_4
+//!   - I2C SCL  PIN_5
 
 #![no_std]
 #![no_main]
@@ -32,7 +33,7 @@ async fn main(_spawner: Spawner) {
     let scl = p.PIN_5;
 
     let mut i2c_config = I2cConfig::default();
-    i2c_config.frequency = 400_000;
+    i2c_config.frequency = 100_000;
 
     let i2c = I2c::new_async(p.I2C0, scl, sda, Irqs, i2c_config);
     let imu_bus = ImuI2cBus::new(i2c);
@@ -45,17 +46,22 @@ async fn main(_spawner: Spawner) {
     // Print system clock for verification
     let sys_freq = clk_sys_freq();
     info!("System clock: {} Hz", sys_freq);
-    info!("Starting imu-sensors rp i2c test");
+    info!("Starting imu-sensors RP I2C test");
 
     info!("Reading IMU indefinitely");
     let mut count: u32 = 0;
     loop {
-        let acc = imu.read_acc().await.unwrap();
-        info!("acc x:{} y:{} z:{}", acc.x, acc.y, acc.z);
+        if let Ok(acc) = imu.read_acc().await {
+            info!("acc x:{} y:{} z:{}", acc.x, acc.y, acc.z);
+        } else {
+            info!("IMU read_acc failed");
+        }
+
+        // Read the accelerometer at approximately 1 kHz.
         Timer::after(Duration::from_millis(1)).await;
         count = count.wrapping_add(1);
         if count.is_multiple_of(1000) {
-            info!("Running... {} frames sent", count);
+            info!("Running... {} samples read", count);
         }
     }
 }
