@@ -210,14 +210,18 @@ impl<B: ImuBus> Mpu6886<B> {
         delay_ms(10).await;
 
         // Reset the device.
-        const DEVICE_RESET: u8 = 0x01u8 << 7;
-        self.write_register(Reg::PWR_MGMT_1, DEVICE_RESET).await?;
-        delay_ms(10).await;
+        {
+            const DEVICE_RESET: u8 = 0x01u8 << 7;
+            self.write_register(Reg::PWR_MGMT_1, DEVICE_RESET).await?;
+            delay_ms(10).await;
+        }
 
         // CLKSEL must be set to 001 to achieve full gyroscope performance.
-        const CLKSEL_1: u8 = 0x01;
-        self.write_register(Reg::PWR_MGMT_1, CLKSEL_1).await?;
-        delay_ms(10).await;
+        {
+            const CLKSEL_1: u8 = 0x01;
+            self.write_register(Reg::PWR_MGMT_1, CLKSEL_1).await?;
+            delay_ms(10).await;
+        }
 
         let (config, divider) =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
@@ -235,16 +239,20 @@ impl<B: ImuBus> Mpu6886<B> {
         delay_ms(1).await;
 
         // Configure filtering.
-        const ACC_FCHOICE_B: u8 = 0x00; // Filter:218.1 3-DB BW (Hz), least filtered 1kHz update variant
-        self.write_register(Reg::ACCEL_CONFIG2, ACC_FCHOICE_B).await?;
-        delay_ms(1).await;
+        {
+            const ACC_FCHOICE_B: u8 = 0x00; // Filter:218.1 3-DB BW (Hz), least filtered 1kHz update variant
+            self.write_register(Reg::ACCEL_CONFIG2, ACC_FCHOICE_B).await?;
+            delay_ms(1).await;
+        }
 
         // Configure FIFO.
         self.write_register(Reg::FIFO_ENABLE, 0x00).await?; // FIFO disabled
         delay_ms(1).await;
-        const FIFO_MODE_OVERWRITE: u8 = 0b_0100_0000;
-        self.write_register(Reg::CONFIG, Reg::DLPF_CFG_1 | FIFO_MODE_OVERWRITE).await?;
-        delay_ms(1).await;
+        {
+            const FIFO_MODE_OVERWRITE: u8 = 0b_0100_0000;
+            self.write_register(Reg::CONFIG, Reg::DLPF_CFG_1 | FIFO_MODE_OVERWRITE).await?;
+            delay_ms(1).await;
+        }
 
         // Configure interrupts.
         // M5 Unified settings
@@ -252,9 +260,11 @@ impl<B: ImuBus> Mpu6886<B> {
         self.write_register(Reg::INT_PIN_CFG, 0x22).await?;
         delay_ms(1).await;
 
-        const DATA_RDY_INT_EN: u8 = 0x01;
-        self.write_register(Reg::INT_ENABLE, DATA_RDY_INT_EN).await?; // data ready interrupt enabled
-        delay_ms(10).await;
+        {
+            const DATA_RDY_INT_EN: u8 = 0x01;
+            self.write_register(Reg::INT_ENABLE, DATA_RDY_INT_EN).await?; // data ready interrupt enabled
+            delay_ms(10).await;
+        }
 
         self.write_register(Reg::USER_CTRL, 0x00).await?;
         delay_ms(1).await;
