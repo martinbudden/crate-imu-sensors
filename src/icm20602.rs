@@ -7,7 +7,7 @@ use super::{
 };
 
 const I2C_ADDRESS: u8 = 0x68;
-const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x69;
+const I2C_ADDRESS_ALTERNATIVE: u8 = 0x69;
 
 /// IMU Registers.
 struct Reg;
@@ -76,7 +76,7 @@ impl Reg {
     const _FIFO_COUNT_L: u8 = 0x73;
     const _FIFO_R_W: u8 = 0x74;
 
-    const _WHO_AM_I: u8 = 0x75;
+    const WHO_AM_I: u8 = 0x75;
 
     // ACCELEROMETER OFFSET REGISTERS
     const _XA_OFFSET_H: u8 = 0x77;
@@ -167,7 +167,7 @@ async fn delay_ms(delay: u32) {
 }
 
 impl<B: ImuBus> Icm20602<B> {
-    const DEVICE_ID: u8 = 0x68;
+    const DEVICE_ID: u8 = 0x12;
 
     /// Constructor.
     pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
@@ -175,8 +175,8 @@ impl<B: ImuBus> Icm20602<B> {
             bus,
             common: ImuCommon::new(axis_order),
             config: ImuDeviceConfig {
-                gyro_id_msp: ImuDeviceConfig::MSP_GYRO_ID_LSM6DSO,
-                acc_id_msp: ImuDeviceConfig::MSP_ACC_ID_LSM6DSO,
+                gyro_id_msp: ImuDeviceConfig::MSP_GYRO_ID_ICM20602,
+                acc_id_msp: ImuDeviceConfig::MSP_ACC_ID_ICM20602,
                 axis_order,
                 device_id: Self::DEVICE_ID,
                 address: I2C_ADDRESS,
@@ -185,9 +185,21 @@ impl<B: ImuBus> Icm20602<B> {
         }
     }
 
+    /// Set a newly constructed `Icm20602` to use it's alternative I2C address.
+    #[must_use]
+    pub fn with_alternative_address(mut self) -> Self {
+        self.config.address = I2C_ADDRESS_ALTERNATIVE;
+        self
+    }
+
     /// # Errors
     pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), ImuError> {
         self.bus.write_register(self.config.address, reg, data).await
+    }
+
+    /// # Errors
+    pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
+        self.bus.read_register(self.config.address, reg).await
     }
 
     /// # Errors
@@ -203,9 +215,6 @@ impl<B: ImuBus> Icm20602<B> {
         const CLKSEL_1: u8 = 0x01;
         const DATA_RDY_INT_EN: u8 = 0x01;
 
-        //let _chip_id = self.bus.read_register(self.config.address, Reg::WHO_AM_I);
-        //delay_ms(1);
-
         // clear the power management register
         self.write_register(Reg::PWR_MGMT_1, 0).await?;
         delay_ms(10).await;
@@ -217,6 +226,13 @@ impl<B: ImuBus> Icm20602<B> {
         // CLKSEL must be set to 001 to achieve full gyroscope performance.
         self.write_register(Reg::PWR_MGMT_1, CLKSEL_1).await?;
         delay_ms(10).await;
+
+        // Check WhoAmI
+        let chip_id = self.read_register(Reg::WHO_AM_I).await?;
+        if chip_id != Self::DEVICE_ID {
+            return Err(ImuError::IncorrectWhoAmI);
+        }
+        delay_ms(1).await;
 
         self.write_register(Reg::FIFO_ENABLE, 0x00).await?;
         delay_ms(1).await;
@@ -323,42 +339,34 @@ impl<B: ImuBus> Icm20602<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+    #![allow(clippy::float_cmp)]
 
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    impl<B: ImuBus> Icm20602<B> {
-        async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-            self.bus.read_register(self.config.address, reg).await
-        }
-    }
-
-    #[test]
-    fn normal_types() {}
     #[test]
     fn imu_init() {
-        let mut imu_bus = MockImuBus::new();
-        assert_eq!(0, imu_bus.registers[Reg::ACCEL_XOUT_H as usize]);
-        imu_bus.registers[Reg::ACCEL_XOUT_H as usize] = 4;
+        let imu_bus = MockImuBus::new()
+            .with_register(Reg::WHO_AM_I, Icm20602::<MockImuBus>::DEVICE_ID)
+            .with_register(Reg::ACCEL_XOUT_H, 4);
+        assert_eq!(4, imu_bus.registers[Reg::ACCEL_XOUT_H as usize]);
+
         let mut imu: Icm20602<MockImuBus> = Icm20602::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
             pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        let (gyro_odr, acc_odr) = result.unwrap();
+        assert!(result.is_ok());
+        if let Ok((gyro_sample_rate_hz, acc_sample_rate_hz)) = result {
+            assert_eq!(8000, gyro_sample_rate_hz);
+            assert_eq!(8000, acc_sample_rate_hz);
 
+            assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
+            assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
+            assert_eq!(8000, imu.common.gyro_sample_rate_hz);
+            assert_eq!(8000, imu.common.acc_sample_rate_hz);
+        }
         let reg = pollster::block_on(imu.read_register(Reg::INT_PIN_CFG));
-        assert_eq!(0x22, reg.unwrap());
-
-        assert_eq!(8000, gyro_odr);
-        assert_eq!(8000, acc_odr);
-
-        assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
-        assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
-        assert_eq!(8000, imu.common.gyro_sample_rate_hz);
-        assert_eq!(8000, imu.common.acc_sample_rate_hz);
+        assert!(reg.is_ok());
+        assert_eq!(Ok(0x22), reg);
     }
 }

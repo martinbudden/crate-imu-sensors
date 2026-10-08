@@ -194,6 +194,11 @@ impl<B: ImuBus> Mpu6886<B> {
     }
 
     /// # Errors
+    pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
+        self.bus.read_register(self.config.address, reg).await
+    }
+
+    /// # Errors
     pub async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
@@ -202,9 +207,6 @@ impl<B: ImuBus> Mpu6886<B> {
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
-        let _chip_id = self.bus.read_register(self.config.address, Reg::WHO_AM_I).await;
-        delay_ms(1).await;
-
         // Clear the power management register.
         self.write_register(Reg::PWR_MGMT_1, 0).await?;
         delay_ms(10).await;
@@ -215,6 +217,13 @@ impl<B: ImuBus> Mpu6886<B> {
             self.write_register(Reg::PWR_MGMT_1, DEVICE_RESET).await?;
             delay_ms(10).await;
         }
+
+        // Check WhoAmI
+        let chip_id = self.read_register(Reg::WHO_AM_I).await?;
+        if chip_id != Self::DEVICE_ID {
+            return Err(ImuError::IncorrectWhoAmI);
+        }
+        delay_ms(1).await;
 
         // CLKSEL must be set to 001 to achieve full gyroscope performance.
         {
@@ -313,36 +322,27 @@ impl<B: ImuBus> Mpu6886<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+    #![allow(clippy::float_cmp)]
     use super::*;
     use crate::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuAxisOrder, MockImuBus};
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    impl<B: ImuBus> Mpu6886<B> {
-        /// # Errors
-        pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-            self.bus.read_register(self.config.address, reg).await
-        }
-    }
-
-    #[test]
-    fn normal_types() {}
     #[test]
     fn imu_init() {
-        let imu_bus = MockImuBus::new();
+        let imu_bus = MockImuBus::new().with_register(Reg::WHO_AM_I, Mpu6886::<MockImuBus>::DEVICE_ID);
+
         let mut imu: Mpu6886<MockImuBus> = Mpu6886::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
             pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        let (gyro_sample_rate_hz, acc_sample_rate_hz) = result.unwrap();
 
-        assert_eq!(500, gyro_sample_rate_hz);
-        assert_eq!(500, acc_sample_rate_hz);
-        assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
-        assert_eq!(8.0 / 32768.0, imu.common.acc_scale);
-        assert_eq!(500, imu.common.gyro_sample_rate_hz);
-        assert_eq!(500, imu.common.acc_sample_rate_hz);
+        assert!(result.is_ok());
+        if let Ok((gyro_sample_rate_hz, acc_sample_rate_hz)) = result {
+            assert_eq!(500, gyro_sample_rate_hz);
+            assert_eq!(500, acc_sample_rate_hz);
+            assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
+            assert_eq!(8.0 / 32768.0, imu.common.acc_scale);
+            assert_eq!(500, imu.common.gyro_sample_rate_hz);
+            assert_eq!(500, imu.common.acc_sample_rate_hz);
+        }
     }
 }

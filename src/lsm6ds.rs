@@ -7,7 +7,7 @@ use super::{
 };
 
 const I2C_ADDRESS: u8 = 0x6A;
-const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
+const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
 use cfg_if::cfg_if;
 
@@ -65,7 +65,7 @@ impl Reg {
     const DATA_READY_PULSE_CONFIG: u8 = 0x0B;
     const INT1_CTRL: u8 = 0x0D;
     const INT2_CTRL: u8 = 0x0E;
-    const _WHO_AM_I: u8 = 0x0F;
+    const WHO_AM_I: u8 = 0x0F;
     const CTRL1_XL: u8 = 0x10;
     const CTRL2_G: u8 = 0x11;
     const CTRL3_C: u8 = 0x12;
@@ -114,9 +114,20 @@ const _XL_HM_MODE_DISABLE: u8 = 0b_0001_0000;
 const _LPF1_MEDIUM_HI: u8 = 0x00;
 const _LPF1_MEDIUM_LO: u8 = 0x01;
 const DATA_READY_PULSED: u8 = 0b_1000_0000;
-const _WHO_AM_I_RESPONSE_LSM6DS3TR_C: u8 = 0x6A;
-const _WHO_AM_I_RESPONSE_ISM330DHCX: u8 = 0x6B;
-const _WHO_AM_I_RESPONSE_LSM6DSOX: u8 = 0x6C;
+
+const _WHO_AM_I_RESPONSE_LSM6DS3: u8 = 0x69;
+const _WHO_AM_I_RESPONSE_LSM6DS33: u8 = 0x69;
+
+const WHO_AM_I_RESPONSE_LSM6DS3TR_C: u8 = 0x6A;
+const _WHO_AM_I_RESPONSE_LSM6DSM: u8 = 0x6A;
+
+const WHO_AM_I_RESPONSE_ISM330DHCX: u8 = 0x6B;
+
+const WHO_AM_I_RESPONSE_LSM6DSOX: u8 = 0x6C;
+const _WHO_AM_I_RESPONSE_LSM6DSO: u8 = 0x6C;
+const _WHO_AM_I_RESPONSE_LSM6DSO32: u8 = 0x6C;
+const _WHO_AM_I_RESPONSE_LSM6DSV: u8 = 0x70;
+const _WHO_AM_I_RESPONSE_LSM6DSV320X: u8 = 0x73;
 
 #[derive(Debug, PartialEq)]
 pub struct Lsm6ds<B: ImuBus> {
@@ -198,7 +209,7 @@ async fn delay_ms(delay: u32) {
 }
 
 impl<B: ImuBus> Lsm6ds<B> {
-    const DEVICE_ID: u8 = 0x68;
+    const DEVICE_ID: u8 = WHO_AM_I_RESPONSE_LSM6DS3TR_C;
 
     /// Constructor.
     pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
@@ -216,9 +227,21 @@ impl<B: ImuBus> Lsm6ds<B> {
         }
     }
 
+    /// Set a newly constructed `Lsm6ds` to use it's alternative I2C address.
+    #[must_use]
+    pub fn with_alternative_address(mut self) -> Self {
+        self.config.address = I2C_ADDRESS_ALTERNATIVE;
+        self
+    }
+
     /// # Errors
     pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), ImuError> {
         self.bus.write_register(self.config.address, reg, data).await
+    }
+
+    /// # Errors
+    pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
+        self.bus.read_register(self.config.address, reg).await
     }
 
     /// # Errors
@@ -230,7 +253,14 @@ impl<B: ImuBus> Lsm6ds<B> {
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
-        //if (chip_id != Reg::WHO_AM_I_RESPONSE_LSM6DS3TR_C && chip_id != Reg::WHO_AM_I_RESPONSE_ISM330DHCX && chip_id != Reg::WHO_AM_I_RESPONSE_LSM6DSOX) {
+        // Check WhoAmI
+        let chip_id = self.read_register(Reg::WHO_AM_I).await?;
+        if chip_id != WHO_AM_I_RESPONSE_LSM6DS3TR_C
+            && chip_id != WHO_AM_I_RESPONSE_ISM330DHCX
+            && chip_id != WHO_AM_I_RESPONSE_LSM6DSOX
+        {
+            return Err(ImuError::IncorrectWhoAmI);
+        }
 
         // Software reset
         self.write_register(Reg::CTRL3_C, SW_RESET).await?;
@@ -367,40 +397,39 @@ impl<B: ImuBus> Lsm6ds<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    impl<B: ImuBus> Lsm6ds<B> {
-        async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-            self.bus.read_register(self.config.address, reg).await
-        }
-    }
-
-    #[test]
-    fn normal_types() {}
     #[test]
     fn imu_init() {
-        let mut imu_bus = MockImuBus::new();
-        assert_eq!(0, imu_bus.registers[Reg::CTRL3_C as usize]);
-        imu_bus.registers[Reg::CTRL3_C as usize] = 4;
+        let mut imu_bus = MockImuBus::new()
+            .with_register(Reg::WHO_AM_I, Lsm6ds::<MockImuBus>::DEVICE_ID)
+            .with_register(Reg::CTRL3_C, 4);
+        assert_eq!(4, imu_bus.registers[Reg::CTRL3_C as usize]);
+        assert_eq!(Lsm6ds::<MockImuBus>::DEVICE_ID, imu_bus.registers[Reg::WHO_AM_I as usize]);
+
         let mut imu: Lsm6ds<MockImuBus> = Lsm6ds::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+        let result = pollster::block_on(imu_bus.read_register(0, Reg::WHO_AM_I));
+        assert_eq!(Ok(Lsm6ds::<MockImuBus>::DEVICE_ID), result);
 
         let result =
             pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        let (gyro_odr, acc_odr) = result.unwrap();
+        assert_eq!(Ok((6664, 6664)), result);
 
-        assert_eq!(6664, gyro_odr);
-        assert_eq!(6664, acc_odr);
+        assert!(result.is_ok());
+        if let Ok((gyro_odr, acc_odr)) = result {
+            assert_eq!(6664, gyro_odr);
+            assert_eq!(6664, acc_odr);
+        }
 
         let reg = pollster::block_on(imu.read_register(Reg::CTRL3_C));
-        assert_eq!(BDU | IF_INC, reg.unwrap());
+        assert!(reg.is_ok());
+        assert_eq!(Ok(BDU | IF_INC), reg);
 
         let reg = pollster::block_on(imu.read_register(Reg::DATA_READY_PULSE_CONFIG));
-        assert_eq!(DATA_READY_PULSED, reg.unwrap());
+        assert!(reg.is_ok());
+        assert_eq!(Ok(DATA_READY_PULSED), reg);
 
         assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
         assert_eq!(16.0 / 32768.0, imu.common.acc_scale);

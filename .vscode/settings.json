@@ -131,6 +131,7 @@
         "scopeguard",
         "sdio",
         "semihosting",
+        "Sensortec",
         "SENSORTIME",
         "serde",
         "shlex",

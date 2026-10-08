@@ -32,22 +32,32 @@ bind_interrupts!(struct Irqs {
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
+    // Assign the pins.
     let sck = p.PIN_18;
     let mosi = p.PIN_19;
     let miso = p.PIN_16;
     let cs = Output::new(p.PIN_17, Level::High);
 
+    // Set up SPI
     let mut spi_config = SpiConfig::default();
     spi_config.frequency = 1_000_000;
     let spi = Spi::new(p.SPI0, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Irqs, spi_config);
 
-    let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
-
+    // Create SPI device. Exit with a message if creation fails
+    let spi_device = ExclusiveDevice::new_no_delay(spi, cs)
+        .unwrap_or_else(|e| panic!("Failed to create SPI device. Error code: {e:?}"));
     let imu_bus = ImuSpiBus::new(spi_device);
 
+    // Create IMU.
     let mut imu = Lsm6ds::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
-    let (acc_odr, gyro_odr) =
-        imu.init(1000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G).await.unwrap();
+
+    // Initialize IMU. Exit with a message if initialization fails.
+    let target_output_data_rate_hz = 1000;
+    let (acc_odr, gyro_odr) = imu
+        .init(target_output_data_rate_hz, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G)
+        .await
+        .unwrap_or_else(|e| panic!("IMU initialization failed. Error code: {e:?}"));
+
     info!("IMU init acc: acc_odr, gyro_odr {} {}", acc_odr, gyro_odr);
 
     // Print system clock for verification

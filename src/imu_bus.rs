@@ -8,32 +8,22 @@ pub enum ImuError {
     I2cBusWrite,
     MissingRegister,
     DataSizeTooBig,
+    IncorrectWhoAmI,
 }
-
-/*#[derive(Debug, Clone, PartialEq)]
-pub enum SetupError<E> {
-    /// An error occurred with the I2C/SPI bus during setup.
-    Bus(E),
-    /// An incorrect 'Who Am I' value was returned from the IMU.
-    ImuWhoAmI(u8),
-}
-
-impl<E> From<E> for SetupError<E> {
-    fn from(error: E) -> Self {
-        SetupError::Bus(error)
-    }
-}*/
 
 #[allow(async_fn_in_trait)]
 pub trait ImuBus {
+    /// Returns true if the bus is an SPI bus.
+    fn is_spi(&self) -> bool;
+
     /// The core transaction primitive. Writes bytes while reading bytes back.
     async fn bus_write_read(&mut self, address: u8, write: &[u8], read: &mut [u8]) -> Result<(), ImuError>;
 
     /// Reads a single 8-bit register value.
     async fn read_register(&mut self, address: u8, reg: u8) -> Result<u8, ImuError> {
-        let mut buf = [0u8; 1];
-        self.bus_write_read(address, &[reg], &mut buf).await?;
-        Ok(buf[0])
+        let value = 0u8;
+        self.bus_write_read(address, &[reg], &mut [value]).await?;
+        Ok(value)
     }
 
     /// Reads multiple sequential registers into a destination buffer.

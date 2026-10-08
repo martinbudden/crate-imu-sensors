@@ -7,7 +7,7 @@ use super::{
 };
 
 const I2C_ADDRESS: u8 = 0x6A;
-const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
+const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
 /// IMU Registers.
 struct Reg;
@@ -84,9 +84,7 @@ impl Reg {
     const _FIFO_LOST_PKT1: u8 = 0x6D;
     const _SELF_TEST_CONFIG3: u8 = 0x70;
 
-    const _WHO_AM_I: u8 = 0x75;
-    const _WHO_AM_I_RESPONSE_ICM42605: u8 = 0x43;
-    const _WHO_AM_I_RESPONSE_ICM42688P: u8 = 0x47;
+    const WHO_AM_I: u8 = 0x75;
 
     const BANK_SEL: u8 = 0x76;
     const _INTF_CONFIG4: u8 = 0x7A;
@@ -130,6 +128,9 @@ const _INT_ASYNC_RESET: u8 = 0b_0000_1000; // this bit should be set to 0 for pr
 const INT_TPULSE_DURATION_8US: u8 = 0b_0100_0000; // interrupt puls duration 8us, required for ODR >=4kHz
 const INT_TDEASSERT_DISABLE: u8 = 0b_0010_0000; // required for ODR >= 4kHz
 const INT1_UI_DATA_READY_ENABLED: u8 = 0b_0000_1000;
+
+const WHO_AM_I_RESPONSE_ICM42605: u8 = 0x43;
+const WHO_AM_I_RESPONSE_ICM42688P: u8 = 0x47;
 
 #[allow(missing_docs)]
 #[derive(Debug, PartialEq)]
@@ -212,7 +213,7 @@ async fn delay_ms(delay: u32) {
 }
 
 impl<B: ImuBus> Imu426xx<B> {
-    const DEVICE_ID: u8 = 0;
+    const DEVICE_ID: u8 = WHO_AM_I_RESPONSE_ICM42605;
 
     /// Constructor.
     pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
@@ -230,9 +231,21 @@ impl<B: ImuBus> Imu426xx<B> {
         }
     }
 
+    /// Set a newly constructed `Imu426xx` to use it's alternative I2C address.
+    #[must_use]
+    pub fn with_alternative_address(mut self) -> Self {
+        self.config.address = I2C_ADDRESS_ALTERNATIVE;
+        self
+    }
+
     /// # Errors
     pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), ImuError> {
         self.bus.write_register(self.config.address, reg, data).await
+    }
+
+    /// # Errors
+    pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
+        self.bus.read_register(self.config.address, reg).await
     }
 
     /// Return the gyro and acc sample rates actually set.
@@ -252,10 +265,11 @@ impl<B: ImuBus> Imu426xx<B> {
         self.write_register(Reg::DEVICE_CONFIG, DEVICE_CONFIG_DEFAULT).await?;
         delay_ms(1).await;
 
-        /*let chip_id = self.bus.read_register_with_timeout(Reg::WHO_AM_I, 100);
+        // Check WhoAmI
+        let chip_id = self.read_register(Reg::WHO_AM_I).await?;
         if chip_id != WHO_AM_I_RESPONSE_ICM42605 && chip_id != WHO_AM_I_RESPONSE_ICM42688P {
-            return NOT_DETECTED;
-        }*/
+            return Err(ImuError::IncorrectWhoAmI);
+        }
         delay_ms(1).await;
 
         // set AntiAlias filter, see pages 28ff of TDK ICM-42688-P Datasheet
@@ -437,37 +451,28 @@ impl<B: ImuBus> Imu426xx<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+    #![allow(clippy::float_cmp)]
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    impl<B: ImuBus> Imu426xx<B> {
-        /// # Errors
-        pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-            self.bus.read_register(self.config.address, reg).await
-        }
-    }
-
-    #[test]
-    fn normal_types() {}
     #[test]
     fn imu_init() {
-        let imu_bus = MockImuBus::new();
+        let imu_bus = MockImuBus::new().with_register(Reg::WHO_AM_I, Imu426xx::<MockImuBus>::DEVICE_ID);
+
         let mut imu: Imu426xx<MockImuBus> = Imu426xx::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
             pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        let (gyro_odr, acc_odr) = result.unwrap();
 
-        assert_eq!(8000, gyro_odr);
-        assert_eq!(8000, acc_odr);
+        assert!(result.is_ok());
+        if let Ok((gyro_odr, acc_odr)) = result {
+            assert_eq!(8000, gyro_odr);
+            assert_eq!(8000, acc_odr);
 
-        assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
-        assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
-        assert_eq!(8000, imu.common.gyro_sample_rate_hz);
-        assert_eq!(8000, imu.common.acc_sample_rate_hz);
+            assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
+            assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
+            assert_eq!(8000, imu.common.gyro_sample_rate_hz);
+            assert_eq!(8000, imu.common.acc_sample_rate_hz);
+        }
     }
 }

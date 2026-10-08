@@ -7,7 +7,7 @@ use super::{
 };
 
 const I2C_ADDRESS: u8 = 0x68;
-const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x69;
+const I2C_ADDRESS_ALTERNATIVE: u8 = 0x69;
 
 /// IMU Registers.
 struct Reg;
@@ -57,7 +57,7 @@ impl Reg {
 
     const PWR_MGMT_2: u8 = 0x6C;
 
-    const _WHO_AM_I: u8 = 0x75;
+    const WHO_AM_I: u8 = 0x75;
 }
 
 // IMU register bitflags
@@ -182,9 +182,21 @@ impl<B: ImuBus> Mpu6050<B> {
         }
     }
 
+    /// Set a newly constructed `Mpu6050` to use it's alternative I2C address.
+    #[must_use]
+    pub fn with_alternative_address(mut self) -> Self {
+        self.config.address = I2C_ADDRESS_ALTERNATIVE;
+        self
+    }
+
     /// # Errors
     pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), ImuError> {
         self.bus.write_register(self.config.address, reg, data).await
+    }
+
+    /// # Errors
+    pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
+        self.bus.read_register(self.config.address, reg).await
     }
 
     /// # Errors
@@ -202,11 +214,11 @@ impl<B: ImuBus> Mpu6050<B> {
         self.write_register(Reg::PWR_MGMT_2, 0x00).await?;
         delay_ms(15).await;
 
-        /*let id= self.common.bus.read_register(Self::Reg::WHO_AM_I).await?;
-        if id != Self::DEVICE_ID {
-            return Err(Error::WrongDevice)
+        // Check WhoAmI
+        let chip_id = self.read_register(Reg::WHO_AM_I).await?;
+        if chip_id != Self::DEVICE_ID {
+            return Err(ImuError::IncorrectWhoAmI);
         }
-        Ok(())*/
 
         // Configure interrupts
         self.bus
@@ -324,40 +336,28 @@ where
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    impl<B: ImuBus> Mpu6050<B> {
-        /// # Errors
-        pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-            self.bus.read_register(self.config.address, reg).await
-        }
-    }
-
-    #[test]
-    fn normal_types() {}
     #[test]
     fn imu_init() {
-        let imu_bus = MockImuBus::new();
+        let imu_bus = MockImuBus::new().with_register(Reg::WHO_AM_I, Mpu6050::<MockImuBus>::DEVICE_ID);
+
         let mut imu: Mpu6050<MockImuBus> = Mpu6050::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
             pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        let (gyro_sample_rate_hz, acc_sample_rate_hz) = result.unwrap();
-        /*let Ok((gyro_sample_rate_hz, acc_sample_rate_hz)) = result else {
-            panic!("Result unwrap error");
-        };*/
-        assert_eq!(8000, gyro_sample_rate_hz);
-        assert_eq!(1000, acc_sample_rate_hz);
 
-        assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
-        assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
-        assert_eq!(8000, imu.common.gyro_sample_rate_hz);
-        assert_eq!(1000, imu.common.acc_sample_rate_hz);
+        assert!(result.is_ok());
+        if let Ok((gyro_sample_rate_hz, acc_sample_rate_hz)) = result {
+            assert_eq!(8000, gyro_sample_rate_hz);
+            assert_eq!(1000, acc_sample_rate_hz);
+
+            assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
+            assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
+            assert_eq!(8000, imu.common.gyro_sample_rate_hz);
+            assert_eq!(1000, imu.common.acc_sample_rate_hz);
+        }
     }
     #[test]
     fn map_acc() {

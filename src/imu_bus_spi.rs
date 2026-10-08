@@ -17,6 +17,10 @@ impl<SPI> ImuBus for ImuSpiBus<SPI>
 where
     SPI: SpiDevice<u8>,
 {
+    fn is_spi(&self) -> bool {
+        true
+    }
+
     async fn bus_write_read(&mut self, _address: u8, write: &[u8], read: &mut [u8]) -> Result<(), ImuError> {
         if write.is_empty() {
             return Err(ImuError::SpiBus);

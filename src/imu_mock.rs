@@ -208,23 +208,11 @@ impl<B: ImuBus> ImuMock<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+    #![allow(clippy::float_cmp)]
 
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    impl<B: ImuBus> ImuMock<B> {
-        /// # Errors
-        pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-            self.bus.read_register(self.config.address, reg).await
-        }
-    }
-
-    #[test]
-    fn normal_types() {}
     #[test]
     fn imu_init() {
         let imu_bus = MockImuBus::new();
@@ -232,14 +220,16 @@ mod tests {
 
         let result =
             pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        let (gyro_register_value, acc_register_value) = result.unwrap();
 
-        assert_eq!(8000, gyro_register_value);
-        assert_eq!(1000, acc_register_value);
-        //assert_eq!(2000.0 / 32768.0, state.gyro_scale);
-        //assert_eq!(16.0 / 32768.0, state.acc_scale);
-        //assert_eq!(6664, state.gyro_sample_rate_hz);
-        //assert_eq!(6664, state.acc_sample_rate_hz);
+        assert!(result.is_ok());
+        if let Ok((gyro_register_value, acc_register_value)) = result {
+            assert_eq!(8000, gyro_register_value);
+            assert_eq!(1000, acc_register_value);
+            //assert_eq!(2000.0 / 32768.0, state.gyro_scale);
+            //assert_eq!(16.0 / 32768.0, state.acc_scale);
+            //assert_eq!(6664, state.gyro_sample_rate_hz);
+            //assert_eq!(6664, state.acc_sample_rate_hz);
+        }
     }
     #[test]
     fn acc_buf() {
@@ -291,8 +281,7 @@ mod tests {
         let acc = Vector3f32::new(0.5, 2.0, 1.0);
         pollster::block_on(imu.set_acc(acc));
         let result = pollster::block_on(imu.read_acc());
-        let a = result.unwrap();
-        assert_eq!(Vector3f32::new(0.5, 2.0, 1.0), a);
+        assert_eq!(Ok(Vector3f32::new(0.5, 2.0, 1.0)), result);
     }
     #[test]
     fn scale_gyro() {
@@ -341,25 +330,21 @@ mod tests {
         let gyro = Vector3f32::new(125.0, 1000.0, 1750.0);
         pollster::block_on(imu.set_gyro(gyro));
         let result = pollster::block_on(imu.read_gyro());
-        let g = result.unwrap();
-        assert_eq!(Vector3f32 { x: 125.0, y: 1000.0, z: 1750.0 }, g);
+        assert_eq!(Ok(Vector3f32 { x: 125.0, y: 1000.0, z: 1750.0 }), result);
 
         let gyro = Vector3f32::new(500.0, 1000.0, 2000.0);
         pollster::block_on(imu.set_gyro(gyro));
         let result = pollster::block_on(imu.read_gyro());
-        let g = result.unwrap();
-        assert_eq!(Vector3f32 { x: 500.0, y: 1000.0, z: 1999.939 }, g);
+        assert_eq!(Ok(Vector3f32 { x: 500.0, y: 1000.0, z: 1999.939 }), result);
 
         let gyro = Vector3f32::new(2000.0, 4000.0, 10_000.0);
         pollster::block_on(imu.set_gyro(gyro));
         let result = pollster::block_on(imu.read_gyro());
-        let g = result.unwrap();
-        assert_eq!(Vector3f32 { x: 1999.939, y: 1999.939, z: 1999.939 }, g);
+        assert_eq!(Ok(Vector3f32 { x: 1999.939, y: 1999.939, z: 1999.939 }), result);
 
         let gyro = Vector3f32::new(-2000.0, -4000.0, -10_000.0);
         pollster::block_on(imu.set_gyro(gyro));
         let result = pollster::block_on(imu.read_gyro());
-        let g = result.unwrap();
-        assert_eq!(Vector3f32 { x: -2000.0, y: -2000.0, z: -2000.0 }, g);
+        assert_eq!(Ok(Vector3f32 { x: -2000.0, y: -2000.0, z: -2000.0 }), result);
     }
 }

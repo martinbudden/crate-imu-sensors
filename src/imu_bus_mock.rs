@@ -18,11 +18,38 @@ impl MockImuBus {
     pub const fn new() -> Self {
         Self { registers: [0u8; 256] }
     }
+    /// Set a register of a newly constructed `MockImuBus`.
+    #[must_use]
+    pub fn with_register(mut self, reg: u8, data: u8) -> Self {
+        self.registers[reg as usize] = data;
+        self
+    }
 }
 
 impl ImuBus for MockImuBus {
-    async fn bus_write_read(&mut self, _address: u8, _write: &[u8], _read: &mut [u8]) -> Result<(), ImuError> {
+    fn is_spi(&self) -> bool {
+        false
+    }
+
+    async fn bus_write_read(&mut self, _address: u8, write: &[u8], read: &mut [u8]) -> Result<(), ImuError> {
         embassy_time::Timer::after_ticks(0).await;
+        // Ensure we have a register address to read from
+        if write.is_empty() {
+            return Ok(());
+        }
+
+        let reg = write[0] as usize;
+
+        if reg >= self.registers.len() {
+            return Ok(());
+        }
+
+        // Calculate how many bytes we can safely copy
+        let registers = &self.registers[reg..];
+        let copy_len = registers.len().min(read.len());
+
+        read[..copy_len].copy_from_slice(&registers[..copy_len]);
+
         Ok(())
     }
 
@@ -32,27 +59,29 @@ impl ImuBus for MockImuBus {
     }
 
     async fn read_registers(&mut self, _address: u8, reg: u8, data: &mut [u8]) -> Result<(), ImuError> {
+        embassy_time::Timer::after_ticks(0).await;
+
         let start = reg as usize;
         let end = start + data.len();
-
         // Copy slice from internal memory to the output buffer
         data.copy_from_slice(&self.registers[start..end]);
-        embassy_time::Timer::after_ticks(0).await;
         Ok(())
     }
 
     async fn write_register(&mut self, _address: u8, reg: u8, data: u8) -> Result<(), ImuError> {
-        self.registers[reg as usize] = data;
         embassy_time::Timer::after_ticks(0).await;
+
+        self.registers[reg as usize] = data;
         Ok(())
     }
 
     async fn write_registers(&mut self, _address: u8, reg: u8, data: &[u8]) -> Result<(), ImuError> {
+        embassy_time::Timer::after_ticks(0).await;
+
         let start = reg as usize;
         let end = start + data.len();
 
         self.registers[start..end].copy_from_slice(data);
-        embassy_time::Timer::after_ticks(0).await;
         Ok(())
     }
 }
@@ -72,7 +101,6 @@ mod test_traits {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
     use super::*;
     #[test]
     fn test_imu_mock() {
@@ -80,10 +108,10 @@ mod tests {
         let write_data = [0xAA, 0xBB];
 
         // In a test environment, you'd "await" these
-        pollster::block_on(bus.write_registers(0, 0x10, &write_data)).unwrap();
+        _ = pollster::block_on(bus.write_registers(0, 0x10, &write_data));
 
         let mut read_data = [0u8; 2];
-        pollster::block_on(bus.read_registers(0, 0x10, &mut read_data)).unwrap();
+        _ = pollster::block_on(bus.read_registers(0, 0x10, &mut read_data));
 
         assert_eq!(read_data, [0xAA, 0xBB]);
     }

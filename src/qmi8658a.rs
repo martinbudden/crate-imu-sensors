@@ -7,7 +7,7 @@ use super::{
 };
 
 const I2C_ADDRESS: u8 = 0x6A;
-const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
+const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
 /// IMU Registers.
 struct Reg;
@@ -134,7 +134,7 @@ async fn delay_ms(delay: u32) {
 
 impl<B: ImuBus> Qmi8658a<B> {
     pub const MAX_SPI_FREQUENCY_HZ: u32 = 15_000_000;
-    const DEVICE_ID: u8 = 0;
+    const DEVICE_ID: u8 = 0x05;
 
     /// Constructor.
     pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
@@ -152,9 +152,21 @@ impl<B: ImuBus> Qmi8658a<B> {
         }
     }
 
+    /// Set a newly constructed `Qmi8658a` to use it's alternative I2C address.
+    #[must_use]
+    pub fn with_alternative_address(mut self) -> Self {
+        self.config.address = I2C_ADDRESS_ALTERNATIVE;
+        self
+    }
+
     /// # Errors
     pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), ImuError> {
         self.bus.write_register(self.config.address, reg, data).await
+    }
+
+    /// # Errors
+    pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
+        self.bus.read_register(self.config.address, reg).await
     }
 
     /// # Errors
@@ -182,6 +194,13 @@ impl<B: ImuBus> Qmi8658a<B> {
         self.write_register(Reg::RESET, 0x0b).await?;
         // soft reset takes a maximum of 15ms
         delay_ms(15).await;
+
+        // Check WhoAmI
+        let chip_id = self.read_register(Reg::WHO_AM_I).await?;
+        if chip_id != Self::DEVICE_ID {
+            return Err(ImuError::IncorrectWhoAmI);
+        }
+        delay_ms(1).await;
 
         // CTRL1
         self.write_register(Reg::CTRL1, ADDRESS_AUTO_INCREMENT | INT2_ENABLE).await?;
@@ -315,7 +334,7 @@ impl<B: ImuBus> Qmi8658a<B> {
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+    #![allow(clippy::float_cmp)]
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
     use core::future::Future;
@@ -323,13 +342,6 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    impl<B: ImuBus> Qmi8658a<B> {
-        /// # Errors
-        pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-            self.bus.read_register(self.config.address, reg).await
-        }
-    }
 
     // A lightweight VTable for a host spin-loop waker that requires zero allocations
     // Kept here as a reference in case I ever want to get rid of pollster.
@@ -355,20 +367,21 @@ mod tests {
     }
 
     #[test]
-    fn normal_types() {}
-    #[test]
     fn imu_init() {
-        let imu_bus = MockImuBus::new();
+        let imu_bus = MockImuBus::new().with_register(Reg::WHO_AM_I, Qmi8658a::<MockImuBus>::DEVICE_ID);
+
         let mut imu: Qmi8658a<MockImuBus> = Qmi8658a::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result = block_on(imu.init(7172, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        let (gyro_odr, acc_odr) = result.unwrap();
 
-        assert_eq!(7172, gyro_odr);
-        assert_eq!(7172, acc_odr);
-        assert_eq!(2048.0 / 32768.0, imu.common.gyro_scale);
-        assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
-        assert_eq!(7172, imu.common.gyro_sample_rate_hz);
-        assert_eq!(7172, imu.common.acc_sample_rate_hz);
+        assert!(result.is_ok());
+        if let Ok((gyro_sample_rate_hz, acc_sample_rate_hz)) = result {
+            assert_eq!(7172, gyro_sample_rate_hz);
+            assert_eq!(7172, acc_sample_rate_hz);
+            assert_eq!(2048.0 / 32768.0, imu.common.gyro_scale);
+            assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
+            assert_eq!(7172, imu.common.gyro_sample_rate_hz);
+            assert_eq!(7172, imu.common.acc_sample_rate_hz);
+        }
     }
 }

@@ -7,13 +7,13 @@ use super::{
 };
 
 const I2C_ADDRESS: u8 = 0x6A;
-const _I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
+const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
 /// IMU Registers.
 struct Reg;
 
 impl Reg {
-    const _CHIP_ID: u8 = 0x00;
+    const CHIP_ID: u8 = 0x00;
     const _ERR_REG: u8 = 0x02;
     const _STATUS: u8 = 0x03;
     const _DATA_0: u8 = 0x04; // through to 0x0B are AUX registers
@@ -59,10 +59,6 @@ impl Reg {
     const _FEATURES: u8 = 0x30; // 16 items
 
     const ACC_CONF: u8 = 0x40;
-    const _ACC_OSR4_AVG1: u8 = 0x00;
-    const _ACC_OSR4_AVG2: u8 = 0x10;
-    const _ACC_NORM_AVG4: u8 = 0x20;
-    const _ACC_CIC_AVG8: u8 = 0x30;
     const _ACC_RANGE: u8 = 0x41;
     const GYR_CONF: u8 = 0x42;
     const _GYR_RANGE: u8 = 0x43;
@@ -72,6 +68,7 @@ impl Reg {
     const _FIFO_WTM_1: u8 = 0x47;
     const _FIFO_CONFIG_0: u8 = 0x48;
     const FIFO_CONFIG_1: u8 = 0x49;
+    const _FIFO_SATURATION: u8 = 0x4A;
     const _AUX_DEV_ID: u8 = 0x4B;
     const _AUX_IF_CONF: u8 = 0x4C;
     const _AUX_RD_ADDR: u8 = 0x4D;
@@ -105,7 +102,7 @@ impl Reg {
     const _DRV: u8 = 0x6C;
     const _ACC_SELF_TEST: u8 = 0x6D;
     const _GYR_SELF_TEST: u8 = 0x6E;
-    const _NV_CONF: u8 = 0x70;
+    const NV_CONF: u8 = 0x70;
     const _OFFSET_0: u8 = 0x71;
     const _OFFSET_1: u8 = 0x72;
     const _OFFSET_2: u8 = 0x73;
@@ -123,6 +120,10 @@ impl Reg {
 }
 
 // IMU register bitflags
+const _ACC_CONF_OSR4_AVG1: u8 = 0x00;
+const _ACC_CONF_OSR4_AVG2: u8 = 0x10;
+const _ACC_CONF_NORM_AVG4: u8 = 0x20;
+const _ACC_CONF_CIC_AVG8: u8 = 0x30;
 const _GYRO_OSR4: u8 = 0x00; // filter 3dB cutoff:u8 =300Hz at 3200Hz ODR
 const _GYRO_OSR2: u8 = 0x10; // filter 3dB cutoff:u8 =557Hz at 3200Hz ODR
 const _GYRO_NORM: u8 = 0x20; // filter 3dB cutoff:u8 =751Hz at 3200Hz ODR
@@ -132,7 +133,7 @@ const _FIFO_HEADER_ENABLE: u8 = 0b_0000_1000;
 const _FIFO_AUX_ENABLE: u8 = 0b_0100_0000;
 const _FIFO_ACC_ENABLE: u8 = 0b_0100_0000;
 const _FIFO_GYRO_ENABLE: u8 = 0b_1000_0000;
-const _FIFO_SATURATION: u8 = 0x4A;
+const NV_CONF_SPI_ENABLE: u8 = 0b_0000_0001;
 
 #[derive(Debug, PartialEq)]
 pub struct Bmi270<B: ImuBus> {
@@ -158,6 +159,8 @@ impl<B: ImuBus> ImuDevice for Bmi270<B> {
     }
 }
 
+/// For SPI BMI270, the first byte received on a read is dummy byte.
+/// See Section 6.4 "Primary Interface SPI" of Bosch Sensortec BMI270 Datasheet.
 impl<B: ImuBus> Imu for Bmi270<B> {
     type Bus = B;
 
@@ -182,29 +185,68 @@ impl<B: ImuBus> Imu for Bmi270<B> {
     }
 
     async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
-        let mut buf = [0u8; 6];
-        self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
-        let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
+        // For BMI270 SPI the first byte received is a dummy byte.
+        let acc = if self.bus.is_spi() {
+            let mut buf = [0u8; 7];
+            self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
+
+            // Destructure the 7-byte array reference into a 1-byte and a 6-byte array reference
+            let [_, ref bytes_6 @ ..] = buf;
+            Vector3f32::from_le_bytes_6(*bytes_6)
+        } else {
+            let mut buf = [0u8; 6];
+            self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
+
+            Vector3f32::from_le_bytes_6(buf)
+        };
+        let acc = acc * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
     async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
-        let mut buf = [0u8; 6];
-        self.write_read(&[Reg::GYRO_X_L], &mut buf).await?;
-        let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
+        // For BMI270 SPI the first byte received is a dummy byte.
+        let gyro = if self.bus.is_spi() {
+            let mut buf = [0u8; 7];
+            self.write_read(&[Reg::GYRO_X_L], &mut buf).await?;
+
+            // Destructure the 7-byte array reference into a 1-byte and a 6-byte array reference
+            let [_, ref bytes_6 @ ..] = buf;
+            Vector3f32::from_le_bytes_6(*bytes_6)
+        } else {
+            let mut buf = [0u8; 6];
+            self.write_read(&[Reg::GYRO_X_L], &mut buf).await?;
+
+            Vector3f32::from_le_bytes_6(buf)
+        };
+
+        let gyro = gyro * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
     async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
-        let mut buf = [0u8; 12];
-        self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
+        // For BMI270 SPI the first byte received is a dummy byte.
+        let (acc, gyro) = if self.bus.is_spi() {
+            let mut buf = [0u8; 13];
+            self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
 
-        let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
+            let [_dummy, a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
-        let acc_buf = [a0, a1, a2, a3, a4, a5];
-        let gyro_buf = [g0, g1, g2, g3, g4, g5];
-        let acc = Vector3f32::from_le_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
-        let gyro = Vector3f32::from_le_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
+            let acc_buf = [a0, a1, a2, a3, a4, a5];
+            let gyro_buf = [g0, g1, g2, g3, g4, g5];
+            (Vector3f32::from_le_bytes_6(acc_buf), Vector3f32::from_le_bytes_6(gyro_buf))
+        } else {
+            let mut buf = [0u8; 12];
+            self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
+
+            let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
+
+            let acc_buf = [a0, a1, a2, a3, a4, a5];
+            let gyro_buf = [g0, g1, g2, g3, g4, g5];
+            (Vector3f32::from_le_bytes_6(acc_buf), Vector3f32::from_le_bytes_6(gyro_buf))
+        };
+
+        let acc = acc * self.common.acc_scale - self.common.acc_offset;
+        let gyro = gyro * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro))
     }
 }
@@ -214,7 +256,7 @@ async fn delay_ms(delay: u32) {
 }
 
 impl<B: ImuBus> Bmi270<B> {
-    const DEVICE_ID: u8 = 0x68;
+    const DEVICE_ID: u8 = 0x24;
 
     /// Constructor.
     pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
@@ -222,8 +264,8 @@ impl<B: ImuBus> Bmi270<B> {
             bus,
             common: ImuCommon::new(axis_order),
             config: ImuDeviceConfig {
-                gyro_id_msp: ImuDeviceConfig::MSP_GYRO_ID_LSM6DSO,
-                acc_id_msp: ImuDeviceConfig::MSP_ACC_ID_LSM6DSO,
+                gyro_id_msp: ImuDeviceConfig::MSP_GYRO_ID_BMI270,
+                acc_id_msp: ImuDeviceConfig::MSP_ACC_ID_BMI270,
                 axis_order,
                 device_id: Self::DEVICE_ID,
                 address: I2C_ADDRESS,
@@ -232,9 +274,23 @@ impl<B: ImuBus> Bmi270<B> {
         }
     }
 
+    /// Set a newly constructed `Bmi270` to use it's alternative I2C address.
+    #[must_use]
+    pub fn with_alternative_address(mut self) -> Self {
+        self.config.address = I2C_ADDRESS_ALTERNATIVE;
+        self
+    }
+
     /// # Errors
     pub async fn write_register(&mut self, reg: u8, data: u8) -> Result<(), ImuError> {
         self.bus.write_register(self.config.address, reg, data).await
+    }
+
+    /// # Errors
+    pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
+        let mut buf = [0u8; 2];
+        self.bus.bus_write_read(self.config.address, &[reg], &mut buf).await?;
+        Ok(buf[1])
     }
 
     /// # Errors
@@ -251,11 +307,23 @@ impl<B: ImuBus> Bmi270<B> {
         const ACTIVE_HIGH: u8 = 0b_0000_0010; // active high and active low are the only options
         const OUTPUT_ENABLE: u8 = 0b_0000_0100;
 
-        // Software reset
-        self.write_register(Reg::CMD, 0xB6).await?; // Soft reset
+        // Check WhoAmI
+        let chip_id = self.read_register(Reg::CHIP_ID).await?;
+        if chip_id != Self::DEVICE_ID {
+            return Err(ImuError::IncorrectWhoAmI);
+        }
         delay_ms(1).await;
 
+        // Software reset
+        self.write_register(Reg::CMD, 0xB6).await?; // Soft reset
         delay_ms(100).await;
+
+        // Set to SPI mode
+        if self.bus.is_spi() {
+            self.write_register(Reg::NV_CONF, NV_CONF_SPI_ENABLE).await?;
+            delay_ms(1).await;
+        }
+
         // Power save disabled
         self.write_register(Reg::PWR_CONF, 0x00).await?;
         // 450us is minimum delay required
@@ -410,7 +478,7 @@ impl<B: ImuBus> Bmi270<B> {
         // complete config load
         self.write_register(Reg::INIT_CTRL, 0x01).await?;
         delay_ms(10).await;
-        let internal_status = self.bus.read_register(self.config.address, Reg::INTERNAL_STATUS).await?;
+        let internal_status = self.read_register(Reg::INTERNAL_STATUS).await?;
         //assert(internal_status == INIT_OK || internal_status == SENSOR_STOPPED);
         Ok(internal_status)
     }
@@ -854,42 +922,43 @@ const IMU_BMI270_CONFIG_DATA: [u8; 8192] = [
 #[cfg(test)]
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+    #![allow(clippy::float_cmp)]
 
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    impl<B: ImuBus> Bmi270<B> {
-        async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-            self.bus.read_register(self.config.address, reg).await
-        }
-    }
-
-    #[test]
-    fn normal_types() {}
     #[test]
     fn imu_init() {
-        let mut imu_bus = MockImuBus::new();
-        assert_eq!(0, imu_bus.registers[Reg::ACC_X_L as usize]);
-        imu_bus.registers[Reg::ACC_X_L as usize] = 4;
+        let mut imu_bus = MockImuBus::new()
+            .with_register(Reg::CHIP_ID, Bmi270::<MockImuBus>::DEVICE_ID)
+            .with_register(Reg::CHIP_ID + 1, Bmi270::<MockImuBus>::DEVICE_ID) // kludge to handle Bmi270 dummy byte for SPI reads
+            .with_register(Reg::CMD, 0xB6)
+            .with_register(Reg::CMD + 1, 0xB6);
+
         let mut imu: Bmi270<MockImuBus> = Bmi270::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+        let result = pollster::block_on(imu_bus.read_register(0, Reg::CHIP_ID));
+        assert_eq!(Ok(Bmi270::<MockImuBus>::DEVICE_ID), result);
+
+        let result = pollster::block_on(imu.read_register(Reg::CHIP_ID));
+        assert_eq!(Ok(Bmi270::<MockImuBus>::DEVICE_ID), result);
 
         let result =
             pollster::block_on(imu.init(3200, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        let (gyro_odr, acc_odr) = result.unwrap();
+        assert_eq!(Ok((3200, 1600)), result);
+
+        assert!(result.is_ok());
+        if let Ok((gyro_odr, acc_odr)) = result {
+            assert_eq!(3200, gyro_odr);
+            assert_eq!(1600, acc_odr);
+
+            assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
+            assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
+            assert_eq!(3200, imu.common.gyro_sample_rate_hz);
+            assert_eq!(1600, imu.common.acc_sample_rate_hz);
+        }
 
         let reg = pollster::block_on(imu.read_register(Reg::CMD));
-        assert_eq!(0xB6, reg.unwrap());
-
-        assert_eq!(3200, gyro_odr);
-        assert_eq!(1600, acc_odr);
-
-        assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
-        assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
-        assert_eq!(3200, imu.common.gyro_sample_rate_hz);
-        assert_eq!(1600, imu.common.acc_sample_rate_hz);
+        assert_eq!(Ok(0xB6), reg);
     }
 }

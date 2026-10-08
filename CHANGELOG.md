@@ -9,6 +9,19 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
+## [0.1.6] - 2026-11-xx
+
+### Added
+
+- `ImuBus` `is_spi()` function.
+- IMU sensors now check `WHO_AM_I` on initialization.
+- `with_alternative_address` builder method.
+- started work on dummy byte required for Bmi270 SPI reads.
+
+### Removed
+
+- All use of `unwrap()`.
+
 ## [0.1.5] - 2026-10-07
 
 ### Added
