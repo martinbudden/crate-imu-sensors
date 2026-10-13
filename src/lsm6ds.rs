@@ -9,8 +9,6 @@ use super::{
 const I2C_ADDRESS: u8 = 0x6A;
 const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 
-use cfg_if::cfg_if;
-
 /// IMU Registers.
 struct Reg;
 
@@ -18,49 +16,6 @@ impl Reg {
     const _RESERVED_00: u8 = 0x00;
     const _FUNC_CFG_ACCESS: u8 = 0x01;
     const _RESERVED_03: u8 = 0x03;
-
-    cfg_if! {
-    if #[cfg(feature = "lsm6ds3tr_c")] {
-    const  RESERVED_02: u8 = 0x02;
-    const  SENSOR_SYNC_TIME_FRAME: u8 = 0x04;
-    const  SENSOR_SYNC_RES_RATIO: u8 = 0x05;
-    const  FIFO_CTRL1: u8 = 0x06;
-    const  FIFO_CTRL2: u8 = 0x07;
-    const  FIFO_CTRL3: u8 = 0x08;
-    const  FIFO_CTRL4: u8 = 0x09;
-    const  FIFO_CTRL5: u8 = 0x0A;
-    const  DRDY_PULSE_CFG_G: u8 = 0x0B;
-    const  RESERVED_0C: u8 = 0x0C;
-    const  MASTER_CONFIG: u8 = 0x1A;
-
-    } else if #[cfg(feature = "ism330dhcx")] {
-
-    const  PIN_CTRL: u8 = 0x02;
-    const  RESERVED_04: u8 = 0x04;
-    const  RESERVED_05: u8 = 0x05;
-    const  RESERVED_06: u8 = 0x06;
-    const  FIFO_CTRL1: u8 = 0x07;
-    const  FIFO_CTRL2: u8 = 0x08;
-    const  FIFO_CTRL3: u8 = 0x09;
-    const  FIFO_CTRL4: u8 = 0x0A;
-    const  COUNTER_BDR_REG1: u8 = 0x0B;
-    const  COUNTER_BDR_REG2: u8 = 0x0C;
-    const  ALL_INT_SRC: u8 = 0x1A;
-
-    } else if #[cfg(feature = "lsm6dsox")] {
-    const  PIN_CTRL: u8 = 0x02;
-    const  S4S_TPH_L: u8 = 0x04;
-    const  S4S_TPH_H: u8 = 0x05;
-    const  S4S_RR: u8 = 0x06;
-    const  FIFO_CTRL1: u8 = 0x07;
-    const  FIFO_CTRL2: u8 = 0x08;
-    const  FIFO_CTRL3: u8 = 0x09;
-    const  FIFO_CTRL4: u8 = 0x0A;
-    const  COUNTER_BDR_REG1: u8 = 0x0B;
-    const  COUNTER_BDR_REG2: u8 = 0x0C;
-    const  ALL_INT_SRC: u8 = 0x1A;
-    }
-    }
 
     const DATA_READY_PULSE_CONFIG: u8 = 0x0B;
     const INT1_CTRL: u8 = 0x0D;
@@ -100,6 +55,51 @@ impl Reg {
     const _OUTY_H_ACC: u8 = 0x2B;
     const _OUTZ_L_ACC: u8 = 0x2C;
     const _OUTZ_H_ACC: u8 = 0x2D;
+}
+
+struct _RegLsm6ds3trC;
+impl _RegLsm6ds3trC {
+    const _RESERVED_02: u8 = 0x02;
+    const _SENSOR_SYNC_TIME_FRAME: u8 = 0x04;
+    const _SENSOR_SYNC_RES_RATIO: u8 = 0x05;
+    const _FIFO_CTRL1: u8 = 0x06;
+    const _FIFO_CTRL2: u8 = 0x07;
+    const _FIFO_CTRL3: u8 = 0x08;
+    const _FIFO_CTRL4: u8 = 0x09;
+    const _FIFO_CTRL5: u8 = 0x0A;
+    const _DRDY_PULSE_CFG_G: u8 = 0x0B;
+    const _RESERVED_0C: u8 = 0x0C;
+    const _MASTER_CONFIG: u8 = 0x1A;
+}
+
+struct _RegIsm330dhcx;
+impl _RegIsm330dhcx {
+    const _PIN_CTRL: u8 = 0x02;
+    const _RESERVED_04: u8 = 0x04;
+    const _RESERVED_05: u8 = 0x05;
+    const _RESERVED_06: u8 = 0x06;
+    const _FIFO_CTRL1: u8 = 0x07;
+    const _FIFO_CTRL2: u8 = 0x08;
+    const _FIFO_CTRL3: u8 = 0x09;
+    const _FIFO_CTRL4: u8 = 0x0A;
+    const _COUNTER_BDR_REG1: u8 = 0x0B;
+    const _COUNTER_BDR_REG2: u8 = 0x0C;
+    const _ALL_INT_SRC: u8 = 0x1A;
+}
+
+struct _RegLsm6dsox;
+impl _RegLsm6dsox {
+    const _PIN_CTRL: u8 = 0x02;
+    const _S4S_TPH_L: u8 = 0x04;
+    const _S4S_TPH_H: u8 = 0x05;
+    const _S4S_RR: u8 = 0x06;
+    const _FIFO_CTRL1: u8 = 0x07;
+    const _FIFO_CTRL2: u8 = 0x08;
+    const _FIFO_CTRL3: u8 = 0x09;
+    const _FIFO_CTRL4: u8 = 0x0A;
+    const _COUNTER_BDR_REG1: u8 = 0x0B;
+    const _COUNTER_BDR_REG2: u8 = 0x0C;
+    const _ALL_INT_SRC: u8 = 0x1A;
 }
 
 // IMU register bitflags

@@ -72,24 +72,21 @@ impl<B: ImuBus> Imu for ImuMock<B> {
 
     async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
-        #[allow(clippy::expect_used)]
-        self.bus().read_registers(0, Reg::ACC_XL, &mut buf).await.expect("read_resisters cannot fail for ImuMock");
+        self.bus().read_registers(0, Reg::ACC_XL, &mut buf).await?;
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
     async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
-        #[allow(clippy::expect_used)]
-        self.bus().read_registers(0, Reg::GYRO_XL, &mut buf).await.expect("read_resisters cannot fail for ImuMock");
+        self.bus().read_registers(0, Reg::GYRO_XL, &mut buf).await?;
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
     async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         let mut buf = [0u8; 12];
-        #[allow(clippy::expect_used)]
-        self.bus().read_registers(0, Reg::ACC_XL, &mut buf).await.expect("read_resisters cannot fail for ImuMock");
+        self.bus().read_registers(0, Reg::ACC_XL, &mut buf).await?;
 
         let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -118,7 +115,6 @@ impl<B: ImuBus> ImuMock<B> {
         }
     }
 
-    /// # Panics
     pub async fn set_acc(&mut self, acc: Vector3f32) {
         let acc_unscaled =
             ((acc + self.common.acc_offset) / self.common.acc_scale).clamp(f32::from(i16::MIN), f32::from(i16::MAX));
@@ -133,11 +129,9 @@ impl<B: ImuBus> ImuMock<B> {
         let y = y_i16.to_le_bytes();
         let z = z_i16.to_le_bytes();
         let data = [x[0], x[1], y[0], y[1], z[0], z[1]];
-        #[allow(clippy::expect_used)]
-        self.bus().write_registers(0, Reg::ACC_XL, &data).await.expect("write_resisters cannot fail for ImuMock");
+        _ = self.bus().write_registers(0, Reg::ACC_XL, &data).await;
     }
 
-    /// # Panics
     pub async fn set_gyro(&mut self, gyro: Vector3f32) {
         let gyro_unscaled =
             ((gyro + self.common.gyro_offset) / self.common.gyro_scale).clamp(f32::from(i16::MIN), f32::from(i16::MAX));
@@ -153,8 +147,7 @@ impl<B: ImuBus> ImuMock<B> {
         let y = y_i16.to_le_bytes();
         let z = z_i16.to_le_bytes();
         let data = [x[0], x[1], y[0], y[1], z[0], z[1]];
-        #[allow(clippy::expect_used)]
-        self.bus().write_registers(0, Reg::GYRO_XL, &data).await.expect("write_resisters cannot fail for ImuMock");
+        _ = self.bus().write_registers(0, Reg::GYRO_XL, &data).await;
     }
 
     /// Return the gyro and acc sample rates actually set.

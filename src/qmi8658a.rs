@@ -12,44 +12,43 @@ const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
 /// IMU Registers.
 struct Reg;
 
-#[allow(unused)]
 impl Reg {
     const WHO_AM_I: u8 = 0x00;
-    const REVISION_ID: u8 = 0x01;
+    const _REVISION_ID: u8 = 0x01;
     const RESET: u8 = 0x60;
 
     const CTRL1: u8 = 0x02;
     const CTRL2: u8 = 0x03;
     const CTRL3: u8 = 0x04;
-    const CTRL5: u8 = 0x06;
+    const _CTRL5: u8 = 0x06;
     const CTRL7: u8 = 0x08;
-    const CTRL8: u8 = 0x09;
-    const CTRL9: u8 = 0x0a;
+    const _CTRL8: u8 = 0x09;
+    const _CTRL9: u8 = 0x0a;
 
-    const CAL1_L: u8 = 0x0b;
-    const CAL1_H: u8 = 0x0c;
-    const CAL2_L: u8 = 0x0d;
-    const CAL2_H: u8 = 0x0e;
-    const CAL3_L: u8 = 0x0f;
-    const CAL3_H: u8 = 0x10;
-    const CAL4_L: u8 = 0x11;
-    const CAL4_H: u8 = 0x12;
+    const _CAL1_L: u8 = 0x0b;
+    const _CAL1_H: u8 = 0x0c;
+    const _CAL2_L: u8 = 0x0d;
+    const _CAL2_H: u8 = 0x0e;
+    const _CAL3_L: u8 = 0x0f;
+    const _CAL3_H: u8 = 0x10;
+    const _CAL4_L: u8 = 0x11;
+    const _CAL4_H: u8 = 0x12;
 
-    const TEMP_L: u8 = 0x033;
-    const TEMP_H: u8 = 0x034;
+    const _TEMP_L: u8 = 0x033;
+    const _TEMP_H: u8 = 0x034;
     const AX_L: u8 = 0x035;
-    const AX_H: u8 = 0x036;
-    const AY_L: u8 = 0x037;
-    const AY_H: u8 = 0x038;
-    const AZ_L: u8 = 0x039;
-    const AZ_H: u8 = 0x031;
+    const _AX_H: u8 = 0x036;
+    const _AY_L: u8 = 0x037;
+    const _AY_H: u8 = 0x038;
+    const _AZ_L: u8 = 0x039;
+    const _AZ_H: u8 = 0x031;
 
     const GX_L: u8 = 0x03B;
-    const GX_H: u8 = 0x03c;
-    const GY_L: u8 = 0x03d;
-    const GY_H: u8 = 0x03e;
-    const GZ_L: u8 = 0x03f;
-    const GZ_H: u8 = 0x040;
+    const _GX_H: u8 = 0x03c;
+    const _GY_L: u8 = 0x03d;
+    const _GY_H: u8 = 0x03e;
+    const _GZ_L: u8 = 0x03f;
+    const _GZ_H: u8 = 0x040;
 }
 
 #[allow(missing_docs)]
