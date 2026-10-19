@@ -18,6 +18,10 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 - `with_alternative_address` builder method.
 - started work on dummy byte required for Bmi270 SPI reads.
 
+### Changed
+
+- Changed `.markdownlint.json` to allow more inline HTML.
+
 ### Removed
 
 - All use of `unwrap()`.
