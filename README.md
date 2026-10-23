@@ -4,7 +4,7 @@
 
 `imu-sensors` uses the [Embassy framework](https://github.com/embassy-rs/embassy) to support Raspberry Pi Pico, STM32, and ESP32 microcontrollers.
 
-This crate is `no_std`, `no alloc`, and the Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
+This crate is `no_std`, `no alloc`, `no panic`, `no unwrap`, `no expect`, and the Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
 
 ## IMUs
 
