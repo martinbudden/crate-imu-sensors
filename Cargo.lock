@@ -70,9 +70,9 @@ dependencies = [
 
 [[package]]
 name = "cortex-m"
-version = "0.7.9"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "844b9697e922c99847eed515c6eb6d101e7ce62ff556fcaec243798291427ee8"
+checksum = "408ca8c6d703a196b73219fdb68fd8914d4fda90c34e2bd6859d4842f761bd5f"
 dependencies = [
  "bare-metal",
  "bitfield",
@@ -450,8 +450,9 @@ dependencies = [
 
 [[package]]
 name = "imu-sensors"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
+ "cfg-if",
  "defmt",
  "defmt-rtt",
  "embassy-time",
@@ -810,8 +811,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.17"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#4fcd5012d4b192a3c5fd1d692e4db19a636ece08"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "065d7d056a3627aeb8ab3dc7abdbd8bc590a1bd13ef20b1792217b131683147b"
 dependencies = [
  "derive_more",
  "libm",
