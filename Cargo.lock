@@ -811,9 +811,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "065d7d056a3627aeb8ab3dc7abdbd8bc590a1bd13ef20b1792217b131683147b"
+checksum = "445c5fa387004577c8c59cca300d79f134c49808ac167de02fd977e01e1bff4f"
 dependencies = [
  "derive_more",
  "libm",

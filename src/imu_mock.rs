@@ -116,8 +116,8 @@ impl<B: ImuBus> ImuMock<B> {
     }
 
     pub async fn set_acc(&mut self, acc: Vector3f32) {
-        let acc_unscaled =
-            ((acc + self.common.acc_offset) / self.common.acc_scale).clamp(f32::from(i16::MIN), f32::from(i16::MAX));
+        let acc_unscaled = ((acc + self.common.acc_offset) / self.common.acc_scale)
+            .clamp_elements(f32::from(i16::MIN), f32::from(i16::MAX));
         #[allow(clippy::cast_possible_truncation)]
         let x_i16 = acc_unscaled.x as i16;
         #[allow(clippy::cast_possible_truncation)]
@@ -133,8 +133,8 @@ impl<B: ImuBus> ImuMock<B> {
     }
 
     pub async fn set_gyro(&mut self, gyro: Vector3f32) {
-        let gyro_unscaled =
-            ((gyro + self.common.gyro_offset) / self.common.gyro_scale).clamp(f32::from(i16::MIN), f32::from(i16::MAX));
+        let gyro_unscaled = ((gyro + self.common.gyro_offset) / self.common.gyro_scale)
+            .clamp_elements(f32::from(i16::MIN), f32::from(i16::MAX));
 
         #[allow(clippy::cast_possible_truncation)]
         let x_i16 = gyro_unscaled.x as i16;
