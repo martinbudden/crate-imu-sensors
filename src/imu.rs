@@ -13,6 +13,9 @@ pub enum AccFullScale {
     Scale8G = 4,
     Scale16G = 5,
     Scale32G = 6,
+    Scale64G = 7,
+    Scale128G = 8,
+    Scale200G = 9,
 }
 
 /// Units for acceleration.

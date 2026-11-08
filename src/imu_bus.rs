@@ -1,5 +1,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ImuError {
+    AccNotAvailable,
+    GyroNotAvailable,
     SpiBus,
     SpiBusRead,
     SpiBusWrite,

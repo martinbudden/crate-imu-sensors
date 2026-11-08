@@ -22,6 +22,8 @@
 //#[cfg(all(feature = "i2c", feature = "spi"))]
 //compile_error!("Features 'i2c' and 'spi' are mutually exclusive and cannot be enabled together.");
 
+mod acc_device;
+mod adxl375;
 mod axis;
 mod bmi270;
 mod icm20602;
@@ -43,14 +45,16 @@ pub use axis::ImuAxisOrder;
 
 pub use imu::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuCommon};
 
+pub use acc_device::AccDevice;
+pub use imu_device::ImuDevice;
+pub use imu_device_config::ImuDeviceConfig;
+
 pub use imu_bus_mock::MockImuBus;
 pub use imu_mock::ImuMock;
 
 pub use imu_bus::{ImuBus, ImuError};
 pub use imu_bus_i2c::ImuI2cBus;
 pub use imu_bus_spi::ImuSpiBus;
-pub use imu_device::ImuDevice;
-pub use imu_device_config::ImuDeviceConfig;
 
 pub use bmi270::Bmi270;
 pub use icm20602::Icm20602;

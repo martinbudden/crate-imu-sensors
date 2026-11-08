@@ -4,6 +4,7 @@ use super::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuError};
 
 #[allow(async_fn_in_trait)]
 pub trait ImuDevice {
+    /// Return the gyro and acc sample rates set.
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
