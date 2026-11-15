@@ -11,6 +11,8 @@ pub enum ImuError {
     MissingRegister,
     DataSizeTooBig,
     IncorrectWhoAmI,
+    InitializationError,
+    InitializationLoadConfigError,
 }
 
 #[allow(async_fn_in_trait)]

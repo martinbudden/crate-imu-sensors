@@ -33,12 +33,15 @@ pub enum AccUnits {
 pub enum GyroFullScale {
     #[default]
     Max = 0,
-    Scale125Dps = 1,
-    Scale250Dps = 2,
-    Scale500Dps = 3,
-    Scale1000Dps = 4,
-    Scale2000Dps = 5,
-    Scale4000Dps = 6,
+    Scale15p625Dps = 1,
+    Scale31p25Dps = 2,
+    Scale62p5Dps = 3,
+    Scale125Dps = 4,
+    Scale250Dps = 5,
+    Scale500Dps = 6,
+    Scale1000Dps = 7,
+    Scale2000Dps = 8,
+    Scale4000Dps = 9,
 }
 
 /// Units for gyro rotation.

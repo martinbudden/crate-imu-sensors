@@ -6,8 +6,9 @@ use super::{
     ImuError,
 };
 
-const I2C_ADDRESS: u8 = 0x6A;
-const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
+// ICM-42688-P I2C address
+const I2C_ADDRESS: u8 = 0x68;
+const I2C_ADDRESS_ALTERNATIVE: u8 = 0x69;
 
 /// IMU Registers.
 struct Reg;
@@ -43,8 +44,8 @@ impl Reg {
     const _FIFO_DATA: u8 = 0x30;
 
     const _APEX_DATA0: u8 = 0x31;
-    const _APEX_DATA1: u8 = 0x33;
-    const _APEX_DATA2: u8 = 0x34;
+    const _APEX_DATA1: u8 = 0x32;
+    const _APEX_DATA2: u8 = 0x33;
     const _APEX_DATA3: u8 = 0x34;
     const _APEX_DATA4: u8 = 0x35;
     const _APEX_DATA5: u8 = 0x36;
@@ -116,20 +117,22 @@ const INT1_DRIVE_CIRCUIT_PUSH_PULL: u8 = 0b_0000_0010;
 const INT1_POLARITY_ACTIVE_HIGH: u8 = 0b_0000_0001;
 const _SENSOR_DATA_BIG_ENDIAN: u8 = 0b_0001_0000; // default
 const SENSOR_DATA_LITTLE_ENDIAN: u8 = 0b_0000_0000; // datasheet gives very little information on how this works
-const UI_SIFS_CFG_DISABLE_I2C: u8 = 0b_0000_0011;
+const _UI_SIFS_CFG_DISABLE_I2C: u8 = 0b_0000_0011;
 const PWR_OFF: u8 = 0x00;
 const PWR_TEMP_ENABLED: u8 = 0b_0000_0000;
 const PWR_GYRO_LOW_NOISE: u8 = 0b_0000_1100;
 const PWR_ACCEL_LOW_NOISE: u8 = 0b_0000_0011;
-const ACCEL_FILTER_LOW_LATENCY: u8 = 0b_1111_0000;
-const GYRO_FILTER_LOW_LATENCY: u8 = 0b_0000_1111;
+const ACCEL_FILTER_LOW_LATENCY_400: u8 = 0b_1110_0000;
+const _ACCEL_FILTER_LOW_LATENCY_200: u8 = 0b_1111_0000;
+const GYRO_FILTER_LOW_LATENCY_400: u8 = 0b_0000_1110;
+const _GYRO_FILTER_LOW_LATENCY_200: u8 = 0b_0000_1111;
 const INT_CLEAR_ON_STATUS_BIT_READ: u8 = 0b_0000_0000;
 const _INT_ASYNC_RESET: u8 = 0b_0000_1000; // this bit should be set to 0 for proper INT1 and INT2 pin operation
 const INT_TPULSE_DURATION_8US: u8 = 0b_0100_0000; // interrupt puls duration 8us, required for ODR >=4kHz
 const INT_TDEASSERT_DISABLE: u8 = 0b_0010_0000; // required for ODR >= 4kHz
 const INT1_UI_DATA_READY_ENABLED: u8 = 0b_0000_1000;
 
-const WHO_AM_I_RESPONSE_ICM42605: u8 = 0x43;
+const WHO_AM_I_RESPONSE_ICM42605: u8 = 0x42;
 const WHO_AM_I_RESPONSE_ICM42688P: u8 = 0x47;
 
 #[allow(missing_docs)]
@@ -196,7 +199,7 @@ impl<B: ImuBus> Imu for Imu426xx<B> {
 
     async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
         let mut buf = [0u8; 12];
-        self.write_read(&[Reg::GYRO_DATA_X1], &mut buf).await?;
+        self.write_read(&[Reg::ACCEL_DATA_X1], &mut buf).await?;
 
         let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -260,6 +263,8 @@ impl<B: ImuBus> Imu426xx<B> {
     ) -> Result<(u32, u32), ImuError> {
         self.write_register(Reg::BANK_SEL, 0).await?;
         self.write_register(Reg::PWR_MGMT0, PWR_OFF).await?;
+        // Gyro requires minimum of 45m to complete startup.
+        delay_ms(50).await;
 
         // default reset configuration
         self.write_register(Reg::DEVICE_CONFIG, DEVICE_CONFIG_DEFAULT).await?;
@@ -267,26 +272,48 @@ impl<B: ImuBus> Imu426xx<B> {
 
         // Check WhoAmI
         let chip_id = self.read_register(Reg::WHO_AM_I).await?;
-        if chip_id != WHO_AM_I_RESPONSE_ICM42605 && chip_id != WHO_AM_I_RESPONSE_ICM42688P {
-            return Err(ImuError::IncorrectWhoAmI);
+        match chip_id {
+            WHO_AM_I_RESPONSE_ICM42605 => {
+                self.config.device_id = WHO_AM_I_RESPONSE_ICM42605;
+                self.config.gyro_id_msp = ImuDeviceConfig::MSP_GYRO_ID_ICM42605;
+                self.config.acc_id_msp = ImuDeviceConfig::MSP_ACC_ID_ICM42605;
+            }
+            WHO_AM_I_RESPONSE_ICM42688P => {
+                self.config.device_id = WHO_AM_I_RESPONSE_ICM42688P;
+                self.config.gyro_id_msp = ImuDeviceConfig::MSP_GYRO_ID_ICM42688P;
+                self.config.acc_id_msp = ImuDeviceConfig::MSP_ACC_ID_ICM42688P;
+            }
+            _ => return Err(ImuError::IncorrectWhoAmI),
         }
         delay_ms(1).await;
 
-        // set AntiAlias filter, see pages 28ff of TDK ICM-42688-P Datasheet
-        {
+        // set anti alias filter, see pages 28ff of TDK ICM-42688-P Datasheet
+        if self.config.device_id == WHO_AM_I_RESPONSE_ICM42688P {
             const GYRO_AAF_DELT: u8 = 38;
             const GYRO_AAF_DELTSQR: u16 = 1440;
             const GYRO_AAF_BITSH: u8 = 4; // gives 3dB Bandwidth of 2029 Hz
-            self.write_register(Reg::BANK_SEL, 1).await?;
-            self.write_register(Reg::BANK1_GYRO_CONFIG_STATIC3, GYRO_AAF_DELT).await?;
-            self.write_register(Reg::BANK1_GYRO_CONFIG_STATIC4, (GYRO_AAF_DELTSQR & 0xFF) as u8).await?;
-            self.write_register(Reg::BANK1_GYRO_CONFIG_STATIC5, (GYRO_AAF_BITSH << 4) | (GYRO_AAF_DELTSQR >> 8) as u8)
+            // use intermediate result so BANK0 is restored on error.
+            let result: Result<(), ImuError> = async {
+                self.write_register(Reg::BANK_SEL, 1).await?;
+                self.write_register(Reg::BANK1_GYRO_CONFIG_STATIC3, GYRO_AAF_DELT).await?;
+                self.write_register(Reg::BANK1_GYRO_CONFIG_STATIC4, (GYRO_AAF_DELTSQR & 0xFF) as u8).await?;
+                self.write_register(
+                    Reg::BANK1_GYRO_CONFIG_STATIC5,
+                    (GYRO_AAF_BITSH << 4) | (GYRO_AAF_DELTSQR >> 8) as u8,
+                )
                 .await?;
+                Ok(())
+            }
+            .await;
+            let restore_bank_0 = self.write_register(Reg::BANK_SEL, 0).await;
+            result?;
+            restore_bank_0?;
         }
         self.write_register(Reg::BANK_SEL, 0).await?;
 
         // Reg::GYRO_CONFIG1 defaults to first order gyro ui filter, 3rd order GYRO_DEC2_M2_ORD filter, so is left unchanged
-        self.write_register(Reg::GYRO_ACCEL_CONFIG0, ACCEL_FILTER_LOW_LATENCY | GYRO_FILTER_LOW_LATENCY).await?;
+        self.write_register(Reg::GYRO_ACCEL_CONFIG0, ACCEL_FILTER_LOW_LATENCY_400 | GYRO_FILTER_LOW_LATENCY_400)
+            .await?;
 
         // Configure interrupts
         self.write_register(
@@ -301,9 +328,11 @@ impl<B: ImuBus> Imu426xx<B> {
         self.write_register(Reg::INT_SOURCE0, INT1_UI_DATA_READY_ENABLED).await?;
 
         // Configure INTF
-        self.write_register(Reg::INTF_CONFIG0, SENSOR_DATA_LITTLE_ENDIAN | UI_SIFS_CFG_DISABLE_I2C).await?;
+        // TODO: or UI_SIFS_CFG_DISABLE_I2C with if IMU426xx is SPI.
+        self.write_register(Reg::INTF_CONFIG0, SENSOR_DATA_LITTLE_ENDIAN).await?;
         {
             // Disable AFSR to prevent stalls in gyro output (undocumented in datasheet)
+            // Code as in Betaflight `accgyro_spi_icm426xx.c`
             const CONFIG1_DEFAULT_VALUE: u8 = 0b_1001_0001;
             const CONFIG1_AFSR_MASK: u8 = 0b_0011_1111;
             const CONFIG1_AFSR_DISABLE: u8 = 0b_0100_0000;
@@ -317,7 +346,8 @@ impl<B: ImuBus> Imu426xx<B> {
 
         // Turn on gyro and acc on before configuring Output Data Rate(ODR) and Full Scale Rate (FSRP)
         self.write_register(Reg::PWR_MGMT0, PWR_TEMP_ENABLED | PWR_GYRO_LOW_NOISE | PWR_ACCEL_LOW_NOISE).await?;
-        delay_ms(1).await;
+        // Gyro requires minimum of 45m to complete startup.
+        delay_ms(50).await;
 
         let gyro_register_value =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
@@ -345,9 +375,9 @@ impl<B: ImuBus> Imu426xx<B> {
         const GYRO_RANGE_500_DPS: u8 = 0b_0100_0000;
         const GYRO_RANGE_250_DPS: u8 = 0b_0110_0000;
         const GYRO_RANGE_125_DPS: u8 = 0b_1000_0000;
-        const _GYRO_RANGE_62_P_5_DPS: u8 = 0b_1010_0000;
-        const _GYRO_RANGE_31_P_25_DPS: u8 = 0b_1100_0000;
-        const _GYRO_RANGE_15_P_625_DPS: u8 = 0b_1110_0000;
+        const GYRO_RANGE_62_P_5_DPS: u8 = 0b_1010_0000;
+        const GYRO_RANGE_31_P_25_DPS: u8 = 0b_1100_0000;
+        const GYRO_RANGE_15_P_625_DPS: u8 = 0b_1110_0000;
 
         const GYRO_ODR_32000_HZ: u8 = 0b_0000_0001;
         const GYRO_ODR_16000_HZ: u8 = 0b_0000_0010;
@@ -364,6 +394,9 @@ impl<B: ImuBus> Imu426xx<B> {
 
         // calculate the GYRO_RANGE bit values to write to the Reg::GYRO_CONFIG0 register
         let (scale_dps, gyro_register_value) = match gyro_sensitivity {
+            GyroFullScale::Scale15p625Dps => (15.625 / 32768.0, GYRO_RANGE_15_P_625_DPS),
+            GyroFullScale::Scale31p25Dps => (31.25 / 32768.0, GYRO_RANGE_31_P_25_DPS),
+            GyroFullScale::Scale62p5Dps => (62.5 / 32768.0, GYRO_RANGE_62_P_5_DPS),
             GyroFullScale::Scale125Dps => (125.0 / 32768.0, GYRO_RANGE_125_DPS),
             GyroFullScale::Scale250Dps => (250.0 / 32768.0, GYRO_RANGE_250_DPS),
             GyroFullScale::Scale500Dps => (500.0 / 32768.0, GYRO_RANGE_500_DPS),

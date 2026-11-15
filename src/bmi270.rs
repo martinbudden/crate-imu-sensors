@@ -6,8 +6,8 @@ use super::{
     ImuError,
 };
 
-const I2C_ADDRESS: u8 = 0x6A;
-const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
+const I2C_ADDRESS: u8 = 0x68;
+const I2C_ADDRESS_ALTERNATIVE: u8 = 0x69;
 
 /// IMU Registers.
 struct Reg;
@@ -33,7 +33,7 @@ impl Reg {
 
     const _SENSORTIME_0: u8 = 0x18;
     const _SENSORTIME_1: u8 = 0x19;
-    const _SENSORTIME_3: u8 = 0x1A;
+    const _SENSORTIME_2: u8 = 0x1A;
 
     const _EVENT: u8 = 0x1B;
     const _INT_STATUS_0: u8 = 0x1C;
@@ -59,9 +59,9 @@ impl Reg {
     const _FEATURES: u8 = 0x30; // 16 items
 
     const ACC_CONF: u8 = 0x40;
-    const _ACC_RANGE: u8 = 0x41;
+    const ACC_RANGE: u8 = 0x41;
     const GYR_CONF: u8 = 0x42;
-    const _GYR_RANGE: u8 = 0x43;
+    const GYR_RANGE: u8 = 0x43;
     const _AUX_CONF: u8 = 0x44;
     const _FIFO_DOWNS: u8 = 0x45;
     const _FIFO_WTM_0: u8 = 0x46;
@@ -87,7 +87,7 @@ impl Reg {
     const INIT_CTRL: u8 = 0x59;
     // reserved                                   0x5A
     const INIT_ADDR_0: u8 = 0x5B;
-    const _INIT_ADDR_1: u8 = 0x5C;
+    const INIT_ADDR_1: u8 = 0x5C;
     // reserved                                   0x5D
     const INIT_DATA: u8 = 0x5E;
     const _INTERNAL_ERROR: u8 = 0x5F;
@@ -134,6 +134,21 @@ const _FIFO_AUX_ENABLE: u8 = 0b_0100_0000;
 const _FIFO_ACC_ENABLE: u8 = 0b_0100_0000;
 const _FIFO_GYRO_ENABLE: u8 = 0b_1000_0000;
 const NV_CONF_SPI_ENABLE: u8 = 0b_0000_0001;
+
+#[allow(unused)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Bmi270InitializationStates {
+    #[default]
+    Uninitialized = 0,
+    Ok = 1,
+    Error = 2,
+    DriverError = 3,
+    SensorsStopped = 4,
+    NvmError = 5,
+    StartupError = 6,
+    CompatibilityError = 7,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Bmi270<B: ImuBus> {
@@ -288,9 +303,17 @@ impl<B: ImuBus> Bmi270<B> {
 
     /// # Errors
     pub async fn read_register(&mut self, reg: u8) -> Result<u8, ImuError> {
-        let mut buf = [0u8; 2];
-        self.bus.bus_write_read(self.config.address, &[reg], &mut buf).await?;
-        Ok(buf[1])
+        if self.bus.is_spi() {
+            // For SPI reads, the first byte is a dummy byte.
+            let mut buf = [0u8; 2];
+            self.bus.bus_write_read(self.config.address, &[reg], &mut buf).await?;
+            Ok(buf[1])
+        } else {
+            // No dummy byte for I2C.
+            let mut buf = [0u8; 1];
+            self.bus.bus_write_read(self.config.address, &[reg], &mut buf).await?;
+            Ok(buf[0])
+        }
     }
 
     /// # Errors
@@ -305,7 +328,7 @@ impl<B: ImuBus> Bmi270<B> {
         const DATA_READY_INI_1: u8 = 0b_0000_0100;
         const DATA_READY_INI_2: u8 = 0b_0100_0000;
         const ACTIVE_HIGH: u8 = 0b_0000_0010; // active high and active low are the only options
-        const OUTPUT_ENABLE: u8 = 0b_0000_0100;
+        const OUTPUT_ENABLE: u8 = 0b_0000_1000;
 
         // Check WhoAmI
         let chip_id = self.read_register(Reg::CHIP_ID).await?;
@@ -324,27 +347,14 @@ impl<B: ImuBus> Bmi270<B> {
             delay_ms(1).await;
         }
 
-        // Power save disabled
-        self.write_register(Reg::PWR_CONF, 0x00).await?;
-        // 450us is minimum delay required
-        delay_ms(1).await;
-
-        // prepare config load
-        self.write_register(Reg::INIT_CTRL, 0x00).await?;
-        delay_ms(1).await;
-
         // Write 8kB initialization data to Register INIT_DATA. This requires 6.6ms at 10 MHz SPI I/F frequency.
         _ = self.load_configuration_data().await?;
-
-        // enable gyro, acc and temp sensors
-        self.write_register(Reg::PWR_CTRL, 0x0E).await?;
-        delay_ms(1).await;
 
         // disable advanced power save, enable FIFO self-wake - power mode
         self.write_register(Reg::PWR_CONF, 0x02).await?;
         delay_ms(1).await;
 
-        // all FIFOs disabled
+        // disable FIFO
         self.write_register(Reg::FIFO_CONFIG_1, 0x00).await?;
         delay_ms(1).await;
 
@@ -362,13 +372,23 @@ impl<B: ImuBus> Bmi270<B> {
         self.write_register(Reg::INT_LATCH, 0).await?;
         delay_ms(1).await;
 
-        let gyro_register_value =
+        let (gyro_range, gyro_odr) =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
-        self.write_register(Reg::GYR_CONF, gyro_register_value).await?;
+        self.write_register(Reg::GYR_RANGE, gyro_range).await?;
+        delay_ms(1).await;
+        self.write_register(Reg::GYR_CONF, gyro_odr).await?;
+        delay_ms(1).await;
 
-        let acc_register_value =
+        let (acc_range, acc_odr) =
             self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
-        self.write_register(Reg::ACC_CONF, acc_register_value).await?;
+        self.write_register(Reg::ACC_RANGE, acc_range).await?;
+        delay_ms(1).await;
+        self.write_register(Reg::ACC_CONF, acc_odr).await?;
+        delay_ms(1).await;
+
+        // enable gyro, acc and temp sensors
+        self.write_register(Reg::PWR_CTRL, 0x0E).await?;
+        delay_ms(5).await;
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
@@ -379,7 +399,7 @@ impl<B: ImuBus> Bmi270<B> {
         gyro_sensitivity: GyroFullScale,
         gyro_units: GyroUnits,
         target_output_data_rate_hz: u32,
-    ) -> u8 {
+    ) -> (u8, u8) {
         const GYRO_RANGE_125_DPS: u8 = 0x04;
         const GYRO_RANGE_250_DPS: u8 = 0x03;
         const GYRO_RANGE_500_DPS: u8 = 0x02;
@@ -395,7 +415,7 @@ impl<B: ImuBus> Bmi270<B> {
         const GYRO_ODR_1600_HZ: u8 = 0x0C;
         const GYRO_ODR_3200_HZ: u8 = 0x0D; // for gyro only, acc does not support this rate
 
-        let (scale_dps, gyro_register_value) = match gyro_sensitivity {
+        let (scale_dps, gyro_range) = match gyro_sensitivity {
             GyroFullScale::Scale125Dps => (125.0 / 32768.0, GYRO_RANGE_125_DPS),
             GyroFullScale::Scale250Dps => (250.0 / 32768.0, GYRO_RANGE_250_DPS),
             GyroFullScale::Scale500Dps => (500.0 / 32768.0, GYRO_RANGE_500_DPS),
@@ -416,15 +436,17 @@ impl<B: ImuBus> Bmi270<B> {
         };
         self.common.gyro_sample_rate_hz = gyro_sample_rate_hz;
 
-        gyro_register_value | gyro_odr | GYRO_FILTER_PERFORMANCE_OPTIMIZED
+        (gyro_range, gyro_odr | GYRO_FILTER_PERFORMANCE_OPTIMIZED)
     }
 
+    /// Calculate the closest acc scale and output data rate to the requested values, rounding upwards.
+    /// Note: we allow and accelerometer ODR of 1600Hz when the gyro ODR is 3200Hz.
     pub fn calculate_acc_scale_and_odr(
         &mut self,
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
         target_output_data_rate_hz: u32,
-    ) -> u8 {
+    ) -> (u8, u8) {
         const ACC_FILTER_PERFORMANCE_OPTIMIZED: u8 = 0b_1000_0000; // ie not power optimized
         const ACC_ODR_25_HZ: u8 = 0x06;
         const ACC_ODR_50_HZ: u8 = 0x07;
@@ -438,7 +460,7 @@ impl<B: ImuBus> Bmi270<B> {
         const ACC_RANGE_8G: u8 = 0x02;
         const ACC_RANGE_16G: u8 = 0x03;
 
-        let (scale, acc_register_value) = match acc_sensitivity {
+        let (scale, acc_range) = match acc_sensitivity {
             AccFullScale::Scale2G => (2.0 / 32768.0, ACC_RANGE_2G),
             AccFullScale::Scale4G => (4.0 / 32768.0, ACC_RANGE_4G),
             AccFullScale::Scale8G => (8.0 / 32768.0, ACC_RANGE_8G),
@@ -460,27 +482,52 @@ impl<B: ImuBus> Bmi270<B> {
         };
         self.common.acc_sample_rate_hz = acc_sample_rate_hz;
 
-        acc_register_value | acc_odr | ACC_FILTER_PERFORMANCE_OPTIMIZED
+        (acc_range, acc_odr | ACC_FILTER_PERFORMANCE_OPTIMIZED)
     }
 
     async fn load_configuration_data(&mut self) -> Result<u8, ImuError> {
-        const DATA_SIZE: usize = IMU_BMI270_CONFIG_DATA.len();
-        #[allow(clippy::cast_possible_truncation)]
-        const ADDRESS_ARRAY: [u8; 2] = [((DATA_SIZE >> 1) & 0x0F) as u8, (DATA_SIZE >> 5) as u8];
         const BUS_WRITE_CHUNK_SIZE: usize = 32;
-        self.bus.write_registers(self.config.address, Reg::INIT_ADDR_0, &ADDRESS_ARRAY).await?;
 
-        for ii in (0..DATA_SIZE).step_by(BUS_WRITE_CHUNK_SIZE) {
-            let chunk = &IMU_BMI270_CONFIG_DATA[ii..ii + BUS_WRITE_CHUNK_SIZE];
+        // Power save disabled
+        self.write_register(Reg::PWR_CONF, 0x00).await?;
+        // 450us is minimum delay required
+        delay_ms(1).await;
+
+        // Prepare configuration loading.
+        self.write_register(Reg::INIT_CTRL, 0x00).await?;
+
+        let mut init_address: u16 = 0;
+        #[allow(clippy::cast_possible_truncation)]
+        for chunk in IMU_BMI270_CONFIG_DATA.chunks(BUS_WRITE_CHUNK_SIZE) {
+            // BMI270 initialization address is a 12-bit value:
+            // INIT_ADDR_0 = bits 0..3
+            // INIT_ADDR_1 = bits 4..11
+            self.write_register(Reg::INIT_ADDR_0, (init_address & 0x0F) as u8).await?;
+            self.write_register(Reg::INIT_ADDR_1, (init_address >> 4) as u8).await?;
+
+            // Write the configuration bytes to INIT_DATA.
             self.bus.write_registers(self.config.address, Reg::INIT_DATA, chunk).await?;
+
+            // Address increment is the number of bytes written / 2.
+            init_address += (chunk.len() / 2) as u16;
         }
 
-        // complete config load
+        // Complete configuration loading.
         self.write_register(Reg::INIT_CTRL, 0x01).await?;
-        delay_ms(10).await;
-        let internal_status = self.read_register(Reg::INTERNAL_STATUS).await?;
-        //assert(internal_status == INIT_OK || internal_status == SENSOR_STOPPED);
-        Ok(internal_status)
+
+        // Wait for initialization to complete (maximum 20 ms).
+        for _ in 0..20 {
+            delay_ms(1).await;
+
+            let internal_status = self.read_register(Reg::INTERNAL_STATUS).await?;
+            if internal_status == Bmi270InitializationStates::Ok as u8
+                || internal_status == Bmi270InitializationStates::SensorsStopped as u8
+            {
+                return Ok(internal_status);
+            }
+        }
+
+        Err(ImuError::InitializationLoadConfigError)
     }
 }
 
@@ -933,7 +980,8 @@ mod tests {
             .with_register(Reg::CHIP_ID, Bmi270::<MockImuBus>::DEVICE_ID)
             .with_register(Reg::CHIP_ID + 1, Bmi270::<MockImuBus>::DEVICE_ID) // kludge to handle Bmi270 dummy byte for SPI reads
             .with_register(Reg::CMD, 0xB6)
-            .with_register(Reg::CMD + 1, 0xB6);
+            .with_register(Reg::CMD + 1, 0xB6)
+            .with_register(Reg::INTERNAL_STATUS, Bmi270InitializationStates::Ok as u8);
 
         let mut imu: Bmi270<MockImuBus> = Bmi270::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 

@@ -6,6 +6,7 @@
     //"rust-analyzer.cargo.target": "thumbv6m-none-eabi",
     //"rust-analyzer.cargo.target": "thumbv8m.main-none-eabihf",
     "cSpell.words": [
+        "accgyro",
         "actlr",
         "adxl",
         "AFSR",

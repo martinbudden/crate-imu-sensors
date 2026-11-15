@@ -87,6 +87,9 @@ impl Reg {
     const _ZA_OFFSET_L: u8 = 0x7E;
 }
 
+const CONFIG_DLPF_0: u8 = 0;
+const CONFIG_DLPF_176HZ: u8 = 0x01;
+
 #[derive(Debug, PartialEq)]
 pub struct Icm20602<B: ImuBus> {
     pub bus: B,
@@ -137,14 +140,14 @@ impl<B: ImuBus> Imu for Icm20602<B> {
     async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::ACCEL_XOUT_H], &mut buf).await?;
-        let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
+        let acc = Vector3f32::from_be_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
     }
 
     async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
-        let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
+        let gyro = Vector3f32::from_be_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
     }
 
@@ -156,8 +159,8 @@ impl<B: ImuBus> Imu for Icm20602<B> {
 
         let acc_buf = [a0, a1, a2, a3, a4, a5];
         let gyro_buf = [g0, g1, g2, g3, g4, g5];
-        let acc = Vector3f32::from_le_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
-        let gyro = Vector3f32::from_le_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
+        let acc = Vector3f32::from_be_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
+        let gyro = Vector3f32::from_be_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok(ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro))
     }
 }
@@ -215,17 +218,14 @@ impl<B: ImuBus> Icm20602<B> {
         const CLKSEL_1: u8 = 0x01;
         const DATA_RDY_INT_EN: u8 = 0x01;
 
-        // clear the power management register
-        self.write_register(Reg::PWR_MGMT_1, 0).await?;
-        delay_ms(10).await;
-
         // reset the device
         self.write_register(Reg::PWR_MGMT_1, DEVICE_RESET).await?;
         delay_ms(10).await;
 
         // CLKSEL must be set to 001 to achieve full gyroscope performance.
+        // This sets PLL clock and wakes device.
         self.write_register(Reg::PWR_MGMT_1, CLKSEL_1).await?;
-        delay_ms(10).await;
+        delay_ms(100).await;
 
         // Check WhoAmI
         let chip_id = self.read_register(Reg::WHO_AM_I).await?;
@@ -234,41 +234,39 @@ impl<B: ImuBus> Icm20602<B> {
         }
         delay_ms(1).await;
 
+        // Disable FIFO
         self.write_register(Reg::FIFO_ENABLE, 0x00).await?;
         delay_ms(1).await;
-
-        // Interrupt settings
-        self.write_register(Reg::INT_PIN_CFG, 0x22).await?;
-        delay_ms(1).await;
-
-        // data ready interrupt enabled
-        self.write_register(Reg::INT_ENABLE, DATA_RDY_INT_EN).await?;
-        delay_ms(10).await;
-
         self.write_register(Reg::USER_CTRL, 0x00).await?;
         delay_ms(1).await;
+
+        // Use 50us interrupt pulse (default)
+        self.write_register(Reg::INT_PIN_CFG, 0x00).await?;
+        delay_ms(1).await;
+
         // Gyro scale is fixed at 2000DPS, the maximum supported.
         //enum gyro_scale_e { GFS_250DPS = 0, GFS_500DPS, GFS_1000DPS, GFS_2000DPS };
         //const GYRO_FCHOICE_B:u8 = 0x00; // enables gyro update rate and filter configuration using Reg::CONFIG
 
-        // FIFO disabled, LPF disabled, base output data rate 8kHz (before divider applied)
-        self.write_register(Reg::CONFIG, 0).await?;
-        delay_ms(1).await;
-        let (gyro_register_value, sample_rate_divider) =
+        let (config, gyro_config, sample_rate_divider) =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
-        self.write_register(Reg::GYRO_CONFIG, gyro_register_value).await?;
+        self.write_register(Reg::CONFIG, config).await?;
         delay_ms(1).await;
-
+        self.write_register(Reg::GYRO_CONFIG, gyro_config).await?;
+        delay_ms(1).await;
         self.write_register(Reg::SMPLRT_DIV, sample_rate_divider).await?;
         delay_ms(1).await;
 
-        let acc_register_value = self.calculate_acc_scale(acc_sensitivity, acc_units, target_output_data_rate_hz);
-        self.write_register(Reg::ACCEL_CONFIG, acc_register_value).await?;
-        //_acc_resolution = ACC_8G_RES;
+        let (acc_config1, acc_config2) =
+            self.calculate_acc_scale(acc_sensitivity, acc_units, target_output_data_rate_hz);
+        self.write_register(Reg::ACCEL_CONFIG, acc_config1).await?;
+        delay_ms(1).await;
+        self.write_register(Reg::ACCEL_CONFIG2, acc_config2).await?;
         delay_ms(1).await;
 
-        self.write_register(Reg::ACCEL_CONFIG2, 0).await?;
-        delay_ms(1).await;
+        // enable data ready interrupt, now that everything has been configured
+        self.write_register(Reg::INT_ENABLE, DATA_RDY_INT_EN).await?;
+        delay_ms(10).await;
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
@@ -279,49 +277,51 @@ impl<B: ImuBus> Icm20602<B> {
         gyro_sensitivity: GyroFullScale,
         gyro_units: GyroUnits,
         target_output_data_rate_hz: u32,
-    ) -> (u8, u8) {
+    ) -> (u8, u8, u8) {
         const GYRO_RANGE_250_DPS: u8 = 0b_0000_0000;
         const GYRO_RANGE_500_DPS: u8 = 0b_0000_1000;
         const GYRO_RANGE_1000_DPS: u8 = 0b_0001_0000;
         const GYRO_RANGE_2000_DPS: u8 = 0b_0001_1000;
 
         let (scale_dps, gyro_register_value) = match gyro_sensitivity {
-            GyroFullScale::Scale250Dps => (250.0 / 32768.0, GYRO_RANGE_250_DPS),
-            GyroFullScale::Scale500Dps => (500.0 / 32768.0, GYRO_RANGE_500_DPS),
-            GyroFullScale::Scale1000Dps => (1000.0 / 32768.0, GYRO_RANGE_1000_DPS),
-            _ => (2000.0 / 32768.0, GYRO_RANGE_2000_DPS),
+            GyroFullScale::Scale250Dps => (1.0 / 131.0, GYRO_RANGE_250_DPS),
+            GyroFullScale::Scale500Dps => (1.0 / 65.5, GYRO_RANGE_500_DPS),
+            GyroFullScale::Scale1000Dps => (1.0 / 32.8, GYRO_RANGE_1000_DPS),
+            _ => (1.0 / 16.4, GYRO_RANGE_2000_DPS),
         };
         self.common.gyro_scale = if gyro_units == GyroUnits::Dps { scale_dps } else { scale_dps.to_radians() };
 
         // SAMPLE_RATE = INTERNAL_SAMPLE_RATE / (1 + SMPLRT_DIV)
         let (gyro_sample_rate_hz, sample_rate_divider) = match target_output_data_rate_hz {
-            2001..=4000 => (4000, 1),
-            1001..=2000 => (2000, 3),
-            501..=1000 => (1000, 7),
-            201..=500 => (500, 15),
-            101..=200 => (200, 31),
-            51..=100 => (100, 63),
-            26..=50 => (50, 127),
+            501..=1000 => (1000, 0),
+            251..=500 => (500, 1),
+            201..=250 => (250, 3),
+            126..=200 => (200, 4),
+            101..=125 => (125, 7),
+            51..=100 => (100, 9),
+            26..=50 => (50, 19),
+            1..=25 => (25, 39),
             _ => (8_000, 0),
         };
+        let config_register_value = if gyro_sample_rate_hz == 8000 { CONFIG_DLPF_0 } else { CONFIG_DLPF_176HZ };
         self.common.gyro_sample_rate_hz = gyro_sample_rate_hz;
         self.common.acc_sample_rate_hz = gyro_sample_rate_hz;
 
-        (gyro_register_value, sample_rate_divider)
+        (config_register_value, gyro_register_value, sample_rate_divider)
     }
 
     pub fn calculate_acc_scale(
         &mut self,
         acc_sensitivity: AccFullScale,
         acc_units: AccUnits,
-        _target_output_data_rate_hz: u32,
-    ) -> u8 {
+        target_output_data_rate_hz: u32,
+    ) -> (u8, u8) {
         const ACC_RANGE_16G: u8 = 0b_0001_1000;
         const ACC_RANGE_8G: u8 = 0b_0001_0000;
         const ACC_RANGE_4G: u8 = 0b_0000_1000;
         const ACC_RANGE_2G: u8 = 0b_0000_0000;
 
-        let (scale, acc_register_value) = match acc_sensitivity {
+        let (scale, acc_config1) = match acc_sensitivity {
             AccFullScale::Scale2G => (2.0 / 32768.0, ACC_RANGE_2G),
             AccFullScale::Scale4G => (4.0 / 32768.0, ACC_RANGE_4G),
             AccFullScale::Scale8G => (8.0 / 32768.0, ACC_RANGE_8G),
@@ -332,7 +332,12 @@ impl<B: ImuBus> Icm20602<B> {
         };
         self.common.acc_scale = if acc_units == AccUnits::G { scale } else { scale * ImuCommon::G0 };
 
-        acc_register_value
+        let acc_config2 = if target_output_data_rate_hz > 1000 || target_output_data_rate_hz == 0 {
+            0b_1000 // set ACCEL_FCHOICE_B bit
+        } else {
+            0
+        };
+        (acc_config1, acc_config2)
     }
 }
 
@@ -360,13 +365,13 @@ mod tests {
             assert_eq!(8000, gyro_sample_rate_hz);
             assert_eq!(8000, acc_sample_rate_hz);
 
-            assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
+            assert_eq!(0.06097561, imu.common.gyro_scale);
             assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
             assert_eq!(8000, imu.common.gyro_sample_rate_hz);
             assert_eq!(8000, imu.common.acc_sample_rate_hz);
         }
         let reg = pollster::block_on(imu.read_register(Reg::INT_PIN_CFG));
         assert!(reg.is_ok());
-        assert_eq!(Ok(0x22), reg);
+        assert_eq!(Ok(0x00), reg);
     }
 }
