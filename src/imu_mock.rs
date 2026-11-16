@@ -1,8 +1,8 @@
 use vqm::Vector3f32;
 
 use super::{
-    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
-    ImuError,
+    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    ImuDeviceConfig, ImuError,
 };
 
 struct Reg;
@@ -34,9 +34,9 @@ impl<B: ImuBus> ImuDevice for ImuMock<B> {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         ImuMock::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
@@ -150,14 +150,15 @@ impl<B: ImuBus> ImuMock<B> {
         _ = self.bus().write_registers(0, Reg::GYRO_XL, &data).await;
     }
 
-    /// Return the gyro and acc sample rates actually set.
+    /// Initialize IMU.
+    /// Returns `(gyro_sample_rate_hz, acc_sample_rate_hz)`.
     /// # Errors
     pub async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         self.bus.write_register(0, 0, 0).await?;
@@ -171,15 +172,15 @@ impl<B: ImuBus> ImuMock<B> {
 
     pub fn calculate_gyro_scale_and_odr(
         &mut self,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
         target_output_data_rate_hz: u32,
     ) {
         let scale_dps = match gyro_sensitivity {
-            GyroFullScale::Scale125Dps => 125.0,
-            GyroFullScale::Scale250Dps => 250.0,
-            GyroFullScale::Scale500Dps => 500.0,
-            GyroFullScale::Scale1000Dps => 1000.0,
+            GyroSensitivity::Scale125Dps => 125.0,
+            GyroSensitivity::Scale250Dps => 250.0,
+            GyroSensitivity::Scale500Dps => 500.0,
+            GyroSensitivity::Scale1000Dps => 1000.0,
             _ => 2000.0,
         };
         self.common.gyro_scale = if gyro_units == GyroUnits::Dps { scale_dps } else { scale_dps.to_radians() };
@@ -187,11 +188,11 @@ impl<B: ImuBus> ImuMock<B> {
         self.common.gyro_sample_rate_hz = target_output_data_rate_hz;
     }
 
-    pub fn calculate_acc_scale(&mut self, acc_sensitivity: AccFullScale, acc_units: AccUnits) {
+    pub fn calculate_acc_scale(&mut self, acc_sensitivity: AccSensitivity, acc_units: AccUnits) {
         let scale = match acc_sensitivity {
-            AccFullScale::Scale2G => 2.0 / 32768.0,
-            AccFullScale::Scale4G => 4.0 / 32768.0,
-            AccFullScale::Scale8G => 8.0 / 32768.0,
+            AccSensitivity::Scale2G => 2.0 / 32768.0,
+            AccSensitivity::Scale4G => 4.0 / 32768.0,
+            AccSensitivity::Scale8G => 8.0 / 32768.0,
             _ => 16.0 / 32768.0,
         };
         self.common.acc_scale = if acc_units == AccUnits::G { scale } else { scale * ImuCommon::G0 };
@@ -212,7 +213,7 @@ mod tests {
         let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
-            pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
+            pollster::block_on(imu.init(8000, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));
 
         assert!(result.is_ok());
         if let Ok((gyro_register_value, acc_register_value)) = result {

@@ -2,8 +2,8 @@ use embassy_time::{Duration, Timer};
 use vqm::Vector3f32;
 
 use super::{
-    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
-    ImuError,
+    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    ImuDeviceConfig, ImuError,
 };
 
 const I2C_ADDRESS: u8 = 0x68;
@@ -101,9 +101,9 @@ impl<B: ImuBus> ImuDevice for Icm20602<B> {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         Icm20602::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
@@ -209,9 +209,9 @@ impl<B: ImuBus> Icm20602<B> {
     pub async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         const DEVICE_RESET: u8 = 0x01 << 7;
@@ -272,9 +272,15 @@ impl<B: ImuBus> Icm20602<B> {
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
     }
 
+    /// Calculate and set `gyro_scale` and `gyro_sample_rate` given the requested gyro sensitivity, units, and ODR.
+    /// Targets are rounded upwards.
+    /// Values greater than the maximum supported result in setting maximum supported value.
+    ///
+    /// Returns `(config, gyro_config, sample_rate_divider)`,
+    /// the values needed to set the `CONFIG`, `GYRO_CONFIG` and `SMPLRT_DIV` registers.
     pub fn calculate_gyro_scale_and_odr(
         &mut self,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
         target_output_data_rate_hz: u32,
     ) -> (u8, u8, u8) {
@@ -284,9 +290,9 @@ impl<B: ImuBus> Icm20602<B> {
         const GYRO_RANGE_2000_DPS: u8 = 0b_0001_1000;
 
         let (scale_dps, gyro_register_value) = match gyro_sensitivity {
-            GyroFullScale::Scale250Dps => (1.0 / 131.0, GYRO_RANGE_250_DPS),
-            GyroFullScale::Scale500Dps => (1.0 / 65.5, GYRO_RANGE_500_DPS),
-            GyroFullScale::Scale1000Dps => (1.0 / 32.8, GYRO_RANGE_1000_DPS),
+            GyroSensitivity::Scale250Dps => (1.0 / 131.0, GYRO_RANGE_250_DPS),
+            GyroSensitivity::Scale500Dps => (1.0 / 65.5, GYRO_RANGE_500_DPS),
+            GyroSensitivity::Scale1000Dps => (1.0 / 32.8, GYRO_RANGE_1000_DPS),
             _ => (1.0 / 16.4, GYRO_RANGE_2000_DPS),
         };
         self.common.gyro_scale = if gyro_units == GyroUnits::Dps { scale_dps } else { scale_dps.to_radians() };
@@ -300,7 +306,7 @@ impl<B: ImuBus> Icm20602<B> {
             101..=125 => (125, 7),
             51..=100 => (100, 9),
             26..=50 => (50, 19),
-            1..=25 => (25, 39),
+            0..=25 => (25, 39),
             _ => (8_000, 0),
         };
         let config_register_value = if gyro_sample_rate_hz == 8000 { CONFIG_DLPF_0 } else { CONFIG_DLPF_176HZ };
@@ -310,9 +316,14 @@ impl<B: ImuBus> Icm20602<B> {
         (config_register_value, gyro_register_value, sample_rate_divider)
     }
 
+    /// Calculate and set `acc_scale` and `acc_sample_rate` given the requested acc sensitivity, units, and ODR.
+    /// Targets are rounded upwards.
+    /// Values greater than the maximum supported result in setting maximum supported value.
+    /// Returns `(acc_config1, acc_config2)`,
+    /// the values needed to set the `ACC_CONFIG1` and `ACC_CONFIG2` registers.
     pub fn calculate_acc_scale(
         &mut self,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
         target_output_data_rate_hz: u32,
     ) -> (u8, u8) {
@@ -322,9 +333,9 @@ impl<B: ImuBus> Icm20602<B> {
         const ACC_RANGE_2G: u8 = 0b_0000_0000;
 
         let (scale, acc_config1) = match acc_sensitivity {
-            AccFullScale::Scale2G => (2.0 / 32768.0, ACC_RANGE_2G),
-            AccFullScale::Scale4G => (4.0 / 32768.0, ACC_RANGE_4G),
-            AccFullScale::Scale8G => (8.0 / 32768.0, ACC_RANGE_8G),
+            AccSensitivity::Scale2G => (2.0 / 32768.0, ACC_RANGE_2G),
+            AccSensitivity::Scale4G => (4.0 / 32768.0, ACC_RANGE_4G),
+            AccSensitivity::Scale8G => (8.0 / 32768.0, ACC_RANGE_8G),
             _ => {
                 // default includes  AccFullScale::Scale16G
                 (16.0 / 32768.0, ACC_RANGE_16G)
@@ -359,7 +370,7 @@ mod tests {
         let mut imu: Icm20602<MockImuBus> = Icm20602::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
-            pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
+            pollster::block_on(imu.init(8000, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));
         assert!(result.is_ok());
         if let Ok((gyro_sample_rate_hz, acc_sample_rate_hz)) = result {
             assert_eq!(8000, gyro_sample_rate_hz);

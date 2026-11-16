@@ -43,7 +43,7 @@ mod qmi8658a;
 
 pub use axis::ImuAxisOrder;
 
-pub use imu::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuCommon};
+pub use imu::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuCommon};
 
 pub use acc_device::AccDevice;
 pub use imu_device::ImuDevice;

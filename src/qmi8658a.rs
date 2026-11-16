@@ -2,8 +2,8 @@ use embassy_time::{Duration, Timer};
 use vqm::Vector3f32;
 
 use super::{
-    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
-    ImuError,
+    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    ImuDeviceConfig, ImuError,
 };
 
 const I2C_ADDRESS: u8 = 0x6A;
@@ -63,9 +63,9 @@ impl<B: ImuBus> ImuDevice for Qmi8658a<B> {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         Qmi8658a::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
@@ -168,13 +168,15 @@ impl<B: ImuBus> Qmi8658a<B> {
         self.bus.read_register(self.config.address, reg).await
     }
 
+    /// Initialize IMU by resetting and setting registers.
+    /// Returns `(gyro_sample_rate_hz, acc_sample_rate_hz)`.
     /// # Errors
     pub async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         // CTRL1
@@ -206,15 +208,13 @@ impl<B: ImuBus> Qmi8658a<B> {
         delay_ms(1).await;
 
         // CTRL2
-        let acc_register_value =
-            self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
-        self.write_register(Reg::CTRL2, acc_register_value).await?;
+        let ctrl2 = self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
+        self.write_register(Reg::CTRL2, ctrl2).await?;
         delay_ms(1).await;
 
         // CTRL3
-        let gyro_register_value =
-            self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
-        self.write_register(Reg::CTRL3, gyro_register_value).await?;
+        let ctrl3 = self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
+        self.write_register(Reg::CTRL3, ctrl3).await?;
         delay_ms(1).await;
 
         // No CTRL4
@@ -230,9 +230,14 @@ impl<B: ImuBus> Qmi8658a<B> {
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
     }
 
+    /// Calculate and set `gyro_scale` and `gyro_sample_rate` given the requested gyro sensitivity, units, and ODR.
+    /// Targets are rounded upwards.
+    /// Values greater than the maximum supported result in setting maximum supported value.
+    ///
+    /// Returns the value needed to set the `CTRL3` register.
     pub fn calculate_gyro_scale_and_odr(
         &mut self,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
         target_output_data_rate_hz: u32,
     ) -> u8 {
@@ -255,12 +260,11 @@ impl<B: ImuBus> Qmi8658a<B> {
         const _GYRO_RANGE_32_DPS: u8 = 0b_0001_0000;
         const _GYRO_RANGE_16_DPS: u8 = 0b_0000_0000;
 
-        // calculate the GYRO_ODR bit values to write to the GYRO_CONFIG0 register
-        let (scale_dps, gyro_register_value) = match gyro_sensitivity {
-            GyroFullScale::Scale125Dps => (128.0 / 32768.0, GYRO_RANGE_128_DPS),
-            GyroFullScale::Scale250Dps => (256.0 / 32768.0, GYRO_RANGE_256_DPS),
-            GyroFullScale::Scale500Dps => (512.0 / 32768.0, GYRO_RANGE_512_DPS),
-            GyroFullScale::Scale1000Dps => (1024.0 / 32768.0, GYRO_RANGE_1024_DPS),
+        let (scale_dps, gyro_range) = match gyro_sensitivity {
+            GyroSensitivity::Scale125Dps => (128.0 / 32768.0, GYRO_RANGE_128_DPS),
+            GyroSensitivity::Scale250Dps => (256.0 / 32768.0, GYRO_RANGE_256_DPS),
+            GyroSensitivity::Scale500Dps => (512.0 / 32768.0, GYRO_RANGE_512_DPS),
+            GyroSensitivity::Scale1000Dps => (1024.0 / 32768.0, GYRO_RANGE_1024_DPS),
             _ => (2048.0 / 32768.0, GYRO_RANGE_2048_DPS),
         };
         self.common.gyro_scale = if gyro_units == GyroUnits::Dps { scale_dps } else { scale_dps.to_radians() };
@@ -273,17 +277,22 @@ impl<B: ImuBus> Qmi8658a<B> {
             113..=224 => (224, GYRO_ODR_224_P_2_HZ),
             57..=112 => (112, GYRO_ODR_112_P_1_HZ),
             29..=56 => (56, GYRO_ODR_56_P_05_HZ),
-            1..=28 => (28, GYRO_ODR_28_P_025_HZ),
+            0..=28 => (28, GYRO_ODR_28_P_025_HZ),
             _ => (7172, GYRO_ODR_7172_P_4_HZ),
         };
         self.common.gyro_sample_rate_hz = gyro_sample_rate_hz;
 
-        gyro_register_value | gyro_odr
+        gyro_range | gyro_odr
     }
 
+    /// Calculate and set `acc_scale` and `acc_sample_rate` given the requested acc sensitivity, units, and ODR.
+    /// Targets are rounded upwards.
+    /// Values greater than the maximum supported result in setting maximum supported value.
+    ///
+    /// Returns the value needed to set the `CTRL2` register.
     pub fn calculate_acc_scale_and_odr(
         &mut self,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
         target_output_data_rate_hz: u32,
     ) -> u8 {
@@ -301,11 +310,11 @@ impl<B: ImuBus> Qmi8658a<B> {
         const ACCEL_RANGE_8G: u8 = 0b_0010_0000;
         const ACCEL_RANGE_4G: u8 = 0b_0001_0000;
         const ACCEL_RANGE_2G: u8 = 0b_0000_0000;
-        // calculate the ACCEL_ODR bit values to write to the ACCEL_CONFIG0 register
-        let (scale, acc_register_value) = match acc_sensitivity {
-            AccFullScale::Scale2G => (2.0 / 32768.0, ACCEL_RANGE_2G),
-            AccFullScale::Scale4G => (4.0 / 32768.0, ACCEL_RANGE_4G),
-            AccFullScale::Scale8G => (8.0 / 32768.0, ACCEL_RANGE_8G),
+
+        let (scale, acc_range) = match acc_sensitivity {
+            AccSensitivity::Scale2G => (2.0 / 32768.0, ACCEL_RANGE_2G),
+            AccSensitivity::Scale4G => (4.0 / 32768.0, ACCEL_RANGE_4G),
+            AccSensitivity::Scale8G => (8.0 / 32768.0, ACCEL_RANGE_8G),
             _ => {
                 // default includes  AccFullScale::Scale16G
                 (16.0 / 32768.0, ACCEL_RANGE_16G)
@@ -321,12 +330,12 @@ impl<B: ImuBus> Qmi8658a<B> {
             113..=224 => (224, ACC_ODR_224_P_2_HZ),
             57..=112 => (112, ACC_ODR_112_P_1_HZ),
             29..=56 => (56, ACC_ODR_56_P_05_HZ),
-            1..=28 => (28, ACC_ODR_28_P_025_HZ),
+            0..=28 => (28, ACC_ODR_28_P_025_HZ),
             _ => (7172, ACC_ODR_7172_P_4_HZ),
         };
         self.common.acc_sample_rate_hz = acc_sample_rate_hz;
 
-        acc_register_value | acc_odr
+        acc_range | acc_odr
     }
 }
 
@@ -371,7 +380,7 @@ mod tests {
 
         let mut imu: Qmi8658a<MockImuBus> = Qmi8658a::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
-        let result = block_on(imu.init(7172, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
+        let result = block_on(imu.init(7172, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));
 
         assert!(result.is_ok());
         if let Ok((gyro_sample_rate_hz, acc_sample_rate_hz)) = result {

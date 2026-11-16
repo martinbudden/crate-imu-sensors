@@ -175,6 +175,7 @@
         "vcell",
         "VSYS",
         "VTABLE",
+        "wakeup",
         "wakeups",
         "walkdir",
         "wasi",

@@ -3,8 +3,8 @@ use embassy_time::{Duration, Timer};
 use vqm::Vector3f32;
 
 use super::{
-    AccDevice, AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDeviceConfig,
-    ImuError,
+    AccDevice, AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon,
+    ImuDeviceConfig, ImuError,
 };
 
 const I2C_ADDRESS: u8 = 0x3A;
@@ -59,7 +59,7 @@ impl<B: ImuBus> AccDevice for Adxl375<B> {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        _acc_sensitivity: AccFullScale,
+        _acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<u32, ImuError> {
         Adxl375::init(self, target_output_data_rate_hz, acc_units).await

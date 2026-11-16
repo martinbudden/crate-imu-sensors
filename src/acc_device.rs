@@ -1,6 +1,6 @@
 use vqm::Vector3f32;
 
-use super::{AccFullScale, AccUnits, ImuError};
+use super::{AccSensitivity, AccUnits, ImuError};
 
 #[allow(async_fn_in_trait)]
 pub trait AccDevice {
@@ -8,7 +8,7 @@ pub trait AccDevice {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<u32, ImuError>;
 

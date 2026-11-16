@@ -2,8 +2,8 @@ use embassy_time::{Duration, Timer};
 use vqm::Vector3f32;
 
 use super::{
-    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
-    ImuError,
+    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    ImuDeviceConfig, ImuError,
 };
 
 const I2C_ADDRESS: u8 = 0x68;
@@ -101,9 +101,9 @@ impl<B: ImuBus> ImuDevice for Mpu6886<B> {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         Mpu6886::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
@@ -198,13 +198,15 @@ impl<B: ImuBus> Mpu6886<B> {
         self.bus.read_register(self.config.address, reg).await
     }
 
+    /// Initialize IMU by resetting and setting registers.
+    /// Returns `(gyro_sample_rate_hz, acc_sample_rate_hz)`.
     /// # Errors
     pub async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         // Clear the power management register.
@@ -284,7 +286,7 @@ impl<B: ImuBus> Mpu6886<B> {
 
     pub fn calculate_gyro_scale_and_odr(
         &mut self,
-        _gyro_sensitivity: GyroFullScale,
+        _gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
         _target_output_data_rate_hz: u32,
     ) -> (u8, u8) {
@@ -302,7 +304,7 @@ impl<B: ImuBus> Mpu6886<B> {
 
     pub fn calculate_acc_scale_and_odr(
         &mut self,
-        _acc_sensitivity: AccFullScale,
+        _acc_sensitivity: AccSensitivity,
         acc_scale: AccUnits,
         _target_output_data_rate_hz: u32,
     ) -> u8 {
@@ -324,7 +326,7 @@ mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
     #![allow(clippy::float_cmp)]
     use super::*;
-    use crate::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuAxisOrder, MockImuBus};
+    use crate::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, ImuAxisOrder, MockImuBus};
 
     #[test]
     fn imu_init() {
@@ -333,7 +335,7 @@ mod tests {
         let mut imu: Mpu6886<MockImuBus> = Mpu6886::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
-            pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
+            pollster::block_on(imu.init(8000, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));
 
         assert!(result.is_ok());
         if let Ok((gyro_sample_rate_hz, acc_sample_rate_hz)) = result {

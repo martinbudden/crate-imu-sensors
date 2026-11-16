@@ -2,9 +2,20 @@ use embassy_time::{Duration, Timer};
 use vqm::Vector3f32;
 
 use super::{
-    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
-    ImuError,
+    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    ImuDeviceConfig, ImuError,
 };
+
+/// Common driver for LSM6DS3TR-C, ISM330DHCX, and LSM6DSOX IMUs.
+/// Maximum output data rate (ODR) is 6664Hz.
+/// Maximum gyro range is +/- 2000 DPS.
+/// Maximum acc range is +/- 16G.
+#[derive(Debug, PartialEq)]
+pub struct Lsm6ds<B: ImuBus> {
+    pub bus: B,
+    pub common: ImuCommon,
+    pub config: ImuDeviceConfig,
+}
 
 const I2C_ADDRESS: u8 = 0x6A;
 const I2C_ADDRESS_ALTERNATIVE: u8 = 0x6B;
@@ -17,7 +28,6 @@ impl Reg {
     const _FUNC_CFG_ACCESS: u8 = 0x01;
     const _RESERVED_03: u8 = 0x03;
 
-    const DATA_READY_PULSE_CONFIG: u8 = 0x0B;
     const INT1_CTRL: u8 = 0x0D;
     const INT2_CTRL: u8 = 0x0E;
     const WHO_AM_I: u8 = 0x0F;
@@ -57,8 +67,8 @@ impl Reg {
     const _OUTZ_H_ACC: u8 = 0x2D;
 }
 
-struct _RegLsm6ds3trC;
-impl _RegLsm6ds3trC {
+struct RegLsm6ds3trC;
+impl RegLsm6ds3trC {
     const _RESERVED_02: u8 = 0x02;
     const _SENSOR_SYNC_TIME_FRAME: u8 = 0x04;
     const _SENSOR_SYNC_RES_RATIO: u8 = 0x05;
@@ -67,13 +77,13 @@ impl _RegLsm6ds3trC {
     const _FIFO_CTRL3: u8 = 0x08;
     const _FIFO_CTRL4: u8 = 0x09;
     const _FIFO_CTRL5: u8 = 0x0A;
-    const _DRDY_PULSE_CFG_G: u8 = 0x0B;
+    const DRDY_PULSE_CFG_G: u8 = 0x0B;
     const _RESERVED_0C: u8 = 0x0C;
     const _MASTER_CONFIG: u8 = 0x1A;
 }
 
-struct _RegIsm330dhcx;
-impl _RegIsm330dhcx {
+struct RegIsm330dhcx;
+impl RegIsm330dhcx {
     const _PIN_CTRL: u8 = 0x02;
     const _RESERVED_04: u8 = 0x04;
     const _RESERVED_05: u8 = 0x05;
@@ -82,13 +92,13 @@ impl _RegIsm330dhcx {
     const _FIFO_CTRL2: u8 = 0x08;
     const _FIFO_CTRL3: u8 = 0x09;
     const _FIFO_CTRL4: u8 = 0x0A;
-    const _COUNTER_BDR_REG1: u8 = 0x0B;
+    const COUNTER_BDR_REG1: u8 = 0x0B;
     const _COUNTER_BDR_REG2: u8 = 0x0C;
     const _ALL_INT_SRC: u8 = 0x1A;
 }
 
-struct _RegLsm6dsox;
-impl _RegLsm6dsox {
+struct RegLsm6dsox;
+impl RegLsm6dsox {
     const _PIN_CTRL: u8 = 0x02;
     const _S4S_TPH_L: u8 = 0x04;
     const _S4S_TPH_H: u8 = 0x05;
@@ -97,7 +107,7 @@ impl _RegLsm6dsox {
     const _FIFO_CTRL2: u8 = 0x08;
     const _FIFO_CTRL3: u8 = 0x09;
     const _FIFO_CTRL4: u8 = 0x0A;
-    const _COUNTER_BDR_REG1: u8 = 0x0B;
+    const COUNTER_BDR_REG1: u8 = 0x0B;
     const _COUNTER_BDR_REG2: u8 = 0x0C;
     const _ALL_INT_SRC: u8 = 0x1A;
 }
@@ -113,7 +123,6 @@ const _LPF1_SEL_G: u8 = 0b_0000_0010;
 const _XL_HM_MODE_DISABLE: u8 = 0b_0001_0000;
 const _LPF1_MEDIUM_HI: u8 = 0x00;
 const _LPF1_MEDIUM_LO: u8 = 0x01;
-const DATA_READY_PULSED: u8 = 0b_1000_0000;
 
 const _WHO_AM_I_RESPONSE_LSM6DS3: u8 = 0x69;
 const _WHO_AM_I_RESPONSE_LSM6DS33: u8 = 0x69;
@@ -129,21 +138,13 @@ const _WHO_AM_I_RESPONSE_LSM6DSO32: u8 = 0x6C;
 const _WHO_AM_I_RESPONSE_LSM6DSV: u8 = 0x70;
 const _WHO_AM_I_RESPONSE_LSM6DSV320X: u8 = 0x73;
 
-/// Common driver for LSM6DS3TR-C, ISM330DHCX, and LSM6DSOX IMUs.
-#[derive(Debug, PartialEq)]
-pub struct Lsm6ds<B: ImuBus> {
-    pub bus: B,
-    pub common: ImuCommon,
-    pub config: ImuDeviceConfig,
-}
-
 impl<B: ImuBus> ImuDevice for Lsm6ds<B> {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         Lsm6ds::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
@@ -210,7 +211,7 @@ async fn delay_ms(delay: u32) {
 }
 
 impl<B: ImuBus> Lsm6ds<B> {
-    const DEVICE_ID: u8 = WHO_AM_I_RESPONSE_LSM6DS3TR_C;
+    const DEVICE_ID_UNSET: u8 = 0;
 
     /// Constructor.
     pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
@@ -218,10 +219,10 @@ impl<B: ImuBus> Lsm6ds<B> {
             bus,
             common: ImuCommon::new(axis_order),
             config: ImuDeviceConfig {
-                gyro_id_msp: ImuDeviceConfig::MSP_GYRO_ID_LSM6DSO,
-                acc_id_msp: ImuDeviceConfig::MSP_ACC_ID_LSM6DSO,
+                gyro_id_msp: ImuDeviceConfig::MSP_GYRO_ID_NONE,
+                acc_id_msp: ImuDeviceConfig::MSP_ACC_ID_NONE,
                 axis_order,
-                device_id: Self::DEVICE_ID,
+                device_id: Self::DEVICE_ID_UNSET,
                 address: I2C_ADDRESS,
                 flags: 0,
             },
@@ -245,24 +246,32 @@ impl<B: ImuBus> Lsm6ds<B> {
         self.bus.read_register(self.config.address, reg).await
     }
 
+    /// Initialize IMU by resetting and setting registers.
+    /// Returns `(gyro_sample_rate_hz, acc_sample_rate_hz)`.
     /// # Errors
     pub async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
+        const RESET_TIMEOUT_MS: u32 = 10;
+        const RESET_POLL_INTERVAL_MS: u32 = 1;
+
         // Check WhoAmI
         let chip_id = self.read_register(Reg::WHO_AM_I).await?;
-        #[allow(clippy::match_same_arms)]
         match chip_id {
             WHO_AM_I_RESPONSE_LSM6DS3TR_C => {
                 self.config.device_id = chip_id;
+                self.config.gyro_id_msp = ImuDeviceConfig::MSP_GYRO_ID_LSM6DS3TR;
+                self.config.acc_id_msp = ImuDeviceConfig::MSP_ACC_ID_LSM6DS3TR;
             }
             WHO_AM_I_RESPONSE_ISM330DHCX => {
                 self.config.device_id = chip_id;
+                self.config.gyro_id_msp = ImuDeviceConfig::MSP_GYRO_ID_ISM330DHCX;
+                self.config.acc_id_msp = ImuDeviceConfig::MSP_ACC_ID_ISM330DHCX;
             }
             WHO_AM_I_RESPONSE_LSM6DSOX => {
                 self.config.device_id = chip_id;
@@ -274,51 +283,71 @@ impl<B: ImuBus> Lsm6ds<B> {
         // Software reset
         self.write_register(Reg::CTRL3_C, SW_RESET).await?;
         let mut reset_complete = false;
-        for _ in 0..10 {
-            delay_ms(1).await;
+        for _ in 0..RESET_TIMEOUT_MS {
+            delay_ms(RESET_POLL_INTERVAL_MS).await;
             let ctrl3_c = self.read_register(Reg::CTRL3_C).await?;
             if ctrl3_c & SW_RESET == 0 {
                 reset_complete = true;
                 break;
             }
         }
+        _ = reset_complete;
+        #[cfg(not(test))]
         if !reset_complete {
             return Err(ImuError::InitializationError);
         }
-
-        // Set data ready pulsed
-        self.write_register(Reg::DATA_READY_PULSE_CONFIG, DATA_READY_PULSED).await?;
-        delay_ms(1).await;
-
-        // Interrupt pins are by default forced to ground, so active high
-        // Enable gyro data ready on INT1 pin
-        self.write_register(Reg::INT1_CTRL, INT1_DRDY_G).await?;
-        delay_ms(1).await;
-
-        // Enable gyro data ready on INT2 pin
-        self.write_register(Reg::INT2_CTRL, INT2_DRDY_G).await?;
-        delay_ms(1).await;
 
         // Block Data Update and automatically increment registers when read via serial interface (I2C or SPI)
         self.write_register(Reg::CTRL3_C, BDU | IF_INC).await?;
         delay_ms(1).await;
 
-        let gyro_register_value =
-            self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
-        self.write_register(Reg::CTRL2_G, gyro_register_value).await?;
+        let reg_ctrl2_g = self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
+        self.write_register(Reg::CTRL2_G, reg_ctrl2_g).await?;
         delay_ms(1).await;
 
-        let acc_register_value =
-            self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
-        self.write_register(Reg::CTRL1_XL, acc_register_value).await?;
+        let reg_ctrl1_xl = self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
+        self.write_register(Reg::CTRL1_XL, reg_ctrl1_xl).await?;
+
+        if chip_id == WHO_AM_I_RESPONSE_LSM6DS3TR_C {
+            // Set data ready pulsed
+            const DATA_READY_PULSED: u8 = 0b_1000_0000;
+            self.write_register(RegLsm6ds3trC::DRDY_PULSE_CFG_G, DATA_READY_PULSED).await?;
+            delay_ms(1).await;
+        } else if chip_id == WHO_AM_I_RESPONSE_ISM330DHCX {
+            const DATA_READY_PULSED: u8 = 0b_1000_0000;
+
+            self.write_register(RegIsm330dhcx::COUNTER_BDR_REG1, DATA_READY_PULSED).await?;
+        } else if chip_id == WHO_AM_I_RESPONSE_LSM6DSOX {
+            const DATA_READY_PULSED: u8 = 0b_1000_0000;
+
+            self.write_register(RegLsm6dsox::COUNTER_BDR_REG1, DATA_READY_PULSED).await?;
+        }
+
+        // Enable interrupts now IMU is configured.
+        // We deliberately only generate an interrupt when the gyro has data ready:
+        //     acc and gyro are read simultaneously when there is gyro data ready,
+        //     the latest available acc value is read.
+        // Interrupt pins are by default forced to ground, so active high
+        // Enable data ready on INT1 pin
+        self.write_register(Reg::INT1_CTRL, INT1_DRDY_G).await?;
+        delay_ms(1).await;
+
+        // Enable data ready on INT2 pin
+        self.write_register(Reg::INT2_CTRL, INT2_DRDY_G).await?;
+        delay_ms(1).await;
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
     }
 
+    /// Calculate and set `gyro_scale` and `gyro_sample_rate` given the requested gyro sensitivity, units, and ODR.
+    /// Targets are rounded upwards.
+    /// Values greater than the maximum supported result in setting maximum supported value.
+    ///
+    /// Returns the value needed to set the `CTRL2_G` register.
     pub fn calculate_gyro_scale_and_odr(
         &mut self,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
         target_output_data_rate_hz: u32,
     ) -> u8 {
@@ -329,7 +358,7 @@ impl<B: ImuBus> Lsm6ds<B> {
         const GYRO_RANGE_1000_DPS: u8 = 0b_1000;
         const GYRO_RANGE_2000_DPS: u8 = 0b_1100;
 
-        const GYRO_ODR_12P5_HZ: u8 = 0b_0001_0000;
+        // const GYRO_ODR_12P5_HZ: u8 = 0b_0001_0000; not supported
         const GYRO_ODR_26_HZ: u8 = 0b_0010_0000;
         const GYRO_ODR_52_HZ: u8 = 0b_0011_0000;
         const GYRO_ODR_104_HZ: u8 = 0b_0100_0000;
@@ -340,11 +369,11 @@ impl<B: ImuBus> Lsm6ds<B> {
         const GYRO_ODR_3332_HZ: u8 = 0b_1001_0000;
         const GYRO_ODR_6664_HZ: u8 = 0b_1010_0000;
 
-        let (scale_dps, gyro_register_value) = match gyro_sensitivity {
-            GyroFullScale::Scale125Dps => (0.004_375, GYRO_RANGE_125_DPS),
-            GyroFullScale::Scale250Dps => (0.008_75, GYRO_RANGE_250_DPS),
-            GyroFullScale::Scale500Dps => (0.017_5, GYRO_RANGE_500_DPS),
-            GyroFullScale::Scale1000Dps => (0.035, GYRO_RANGE_1000_DPS),
+        let (scale_dps, gyro_range) = match gyro_sensitivity {
+            GyroSensitivity::Scale125Dps => (0.004_375, GYRO_RANGE_125_DPS),
+            GyroSensitivity::Scale250Dps => (0.008_75, GYRO_RANGE_250_DPS),
+            GyroSensitivity::Scale500Dps => (0.017_5, GYRO_RANGE_500_DPS),
+            GyroSensitivity::Scale1000Dps => (0.035, GYRO_RANGE_1000_DPS),
             _ => (0.070, GYRO_RANGE_2000_DPS),
         };
         self.common.gyro_scale = if gyro_units == GyroUnits::Dps { scale_dps } else { scale_dps.to_radians() };
@@ -357,18 +386,22 @@ impl<B: ImuBus> Lsm6ds<B> {
             105..=208 => (208, GYRO_ODR_208_HZ),
             53..=104 => (104, GYRO_ODR_104_HZ),
             27..=52 => (52, GYRO_ODR_52_HZ),
-            13..=26 => (26, GYRO_ODR_26_HZ),
-            1..=12 => (12, GYRO_ODR_12P5_HZ),
+            0..=26 => (26, GYRO_ODR_26_HZ),
             _ => (6664, GYRO_ODR_6664_HZ),
         };
         self.common.gyro_sample_rate_hz = gyro_sample_rate_hz;
 
-        gyro_register_value | gyro_odr
+        gyro_range | gyro_odr
     }
 
+    /// Calculate and set `acc_scale` and `acc_sample_rate` given the requested acc sensitivity, units, and ODR.
+    /// Targets are rounded upwards.
+    /// Values greater than the maximum supported result in setting maximum supported value.
+    ///
+    /// Returns the value needed to set the `CTRL1_XL` register.
     pub fn calculate_acc_scale_and_odr(
         &mut self,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
         target_output_data_rate_hz: u32,
     ) -> u8 {
@@ -376,7 +409,7 @@ impl<B: ImuBus> Lsm6ds<B> {
         const ACC_RANGE_4G: u8 = 0b_1000;
         const ACC_RANGE_8G: u8 = 0b_1100;
         const ACC_RANGE_16G: u8 = 0b_0100;
-        const ACC_ODR_12P5_HZ: u8 = 0b_0001_0000;
+        // const ACC_ODR_12P5_HZ: u8 = 0b_0001_0000; not supported
         const ACC_ODR_26_HZ: u8 = 0b_0010_0000;
         const ACC_ODR_52_HZ: u8 = 0b_0011_0000;
         const ACC_ODR_104_HZ: u8 = 0b_0100_0000;
@@ -387,13 +420,14 @@ impl<B: ImuBus> Lsm6ds<B> {
         const ACC_ODR_3332_HZ: u8 = 0b_1001_0000;
         const ACC_ODR_6664_HZ: u8 = 0b_1010_0000;
 
-        let (scale, acc_register_value) = match acc_sensitivity {
-            AccFullScale::Scale2G => (0.000_061, ACC_RANGE_2G),
-            AccFullScale::Scale4G => (0.000_122, ACC_RANGE_4G),
-            AccFullScale::Scale8G => (0.000_244, ACC_RANGE_8G),
+        let (scale, acc_scale) = match acc_sensitivity {
+            AccSensitivity::Scale2G => (0.000_061, ACC_RANGE_2G),
+            AccSensitivity::Scale4G => (0.000_122, ACC_RANGE_4G),
+            AccSensitivity::Scale8G => (0.000_244, ACC_RANGE_8G),
+            // Default to maximum range.
             _ => {
                 // default includes  AccFullScale::Scale16G
-                (0.000_244, ACC_RANGE_16G)
+                (0.000_488, ACC_RANGE_16G)
             }
         };
         self.common.acc_scale = if acc_units == AccUnits::G { scale } else { scale * ImuCommon::G0 };
@@ -406,60 +440,297 @@ impl<B: ImuBus> Lsm6ds<B> {
             105..=208 => (208, ACC_ODR_208_HZ),
             53..=104 => (104, ACC_ODR_104_HZ),
             27..=52 => (52, ACC_ODR_52_HZ),
-            13..=26 => (26, ACC_ODR_26_HZ),
-            1..=12 => (12, ACC_ODR_12P5_HZ),
+            0..=26 => (26, ACC_ODR_26_HZ),
             _ => (6664, ACC_ODR_6664_HZ),
         };
         self.common.acc_sample_rate_hz = acc_sample_rate_hz;
 
-        acc_register_value | acc_odr
+        acc_scale | acc_odr
     }
 }
 
 #[cfg(test)]
 mod tests {
-    // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
     use super::*;
     use crate::{ImuAxisOrder, MockImuBus};
 
     #[test]
     fn imu_init() {
-        let imu_bus = MockImuBus::new()
-            .with_register(Reg::WHO_AM_I, Lsm6ds::<MockImuBus>::DEVICE_ID)
-            .with_register(Reg::CTRL3_C, 4);
+        const WHO_AM_I: u8 = WHO_AM_I_RESPONSE_LSM6DS3TR_C;
+        const DATA_READY_PULSED: u8 = 0b_1000_0000;
+
+        let imu_bus = MockImuBus::new().with_register(Reg::WHO_AM_I, WHO_AM_I).with_register(Reg::CTRL3_C, 4);
         assert_eq!(4, imu_bus.registers[Reg::CTRL3_C as usize]);
-        assert_eq!(Lsm6ds::<MockImuBus>::DEVICE_ID, imu_bus.registers[Reg::WHO_AM_I as usize]);
+        assert_eq!(WHO_AM_I, imu_bus.registers[Reg::WHO_AM_I as usize]);
 
         let mut imu: Lsm6ds<MockImuBus> = Lsm6ds::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
 
         let result = pollster::block_on(imu.read_register(Reg::WHO_AM_I));
-        assert_eq!(Ok(Lsm6ds::<MockImuBus>::DEVICE_ID), result);
+        assert_eq!(Ok(WHO_AM_I), result);
 
-        let reg = imu.calculate_acc_scale_and_odr(AccFullScale::Max, AccUnits::Mps2, 8000);
+        let reg = imu.calculate_acc_scale_and_odr(AccSensitivity::Max, AccUnits::Mps2, 8000);
         assert_eq!(reg, 0xA4);
-        assert_eq!(imu.common.acc_scale, 0.0023928226);
+        assert!((imu.common.acc_scale - 0.0047856453).abs() < 1e-6);
         assert_eq!(imu.common.acc_sample_rate_hz, 6664);
 
-        let reg = imu.calculate_gyro_scale_and_odr(GyroFullScale::Max, GyroUnits::Rps, 8000);
+        let reg = imu.calculate_gyro_scale_and_odr(GyroSensitivity::Max, GyroUnits::Rps, 8000);
         assert_eq!(reg, 0xAC);
-        assert_eq!(imu.common.gyro_scale, 0.0012217305);
+        assert!((imu.common.gyro_scale - 0.0012217305).abs() < 1e-6);
         assert_eq!(imu.common.gyro_sample_rate_hz, 6664);
 
         let result =
-            pollster::block_on(imu.init(8000, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
-        assert_eq!(Err(ImuError::InitializationError), result);
+            pollster::block_on(imu.init(8000, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));
+        assert_eq!(Ok((6664, 6664)), result);
 
-        /*let reg = pollster::block_on(imu.read_register(Reg::CTRL3_C));
+        let reg = pollster::block_on(imu.read_register(Reg::CTRL3_C));
         assert!(reg.is_ok());
         assert_eq!(Ok(BDU | IF_INC), reg);
 
-        let reg = pollster::block_on(imu.read_register(Reg::DATA_READY_PULSE_CONFIG));
+        let reg = pollster::block_on(imu.read_register(RegLsm6ds3trC::DRDY_PULSE_CFG_G));
         assert!(reg.is_ok());
         assert_eq!(Ok(DATA_READY_PULSED), reg);
 
-        assert_eq!(2000.0 / 32768.0, imu.common.gyro_scale);
-        assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
+        assert!((0.07 - imu.common.gyro_scale) < 1e-6);
+        assert!((0.000244 - imu.common.acc_scale) < 1e-6);
         assert_eq!(6664, imu.common.gyro_sample_rate_hz);
-        assert_eq!(6664, imu.common.acc_sample_rate_hz);*/
+        assert_eq!(6664, imu.common.acc_sample_rate_hz);
+    }
+
+    #[test]
+    fn test_acc_sensitivity() {
+        let cases = [
+            (AccSensitivity::Scale2G, 0.000_061, 0b0000),
+            (AccSensitivity::Scale4G, 0.000_122, 0b1000),
+            (AccSensitivity::Scale8G, 0.000_244, 0b1100),
+            (AccSensitivity::Scale16G, 0.000_488, 0b0100),
+        ];
+
+        for (sensitivity, expected_scale, expected_range) in cases {
+            let bus = MockImuBus::new();
+            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+            let reg = imu.calculate_acc_scale_and_odr(sensitivity, AccUnits::G, 8000);
+            assert_eq!(reg & 0x0C, expected_range);
+            assert!(
+                (imu.common.acc_scale - expected_scale).abs() < 1e-9,
+                "Incorrect scale for {:?}: expected {}, got {}",
+                sensitivity,
+                expected_scale,
+                imu.common.acc_scale,
+            );
+        }
+    }
+
+    #[test]
+    fn test_acc_sensitivity_mps2() {
+        let bus = MockImuBus::new();
+        let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+        _ = imu.calculate_acc_scale_and_odr(AccSensitivity::Scale16G, AccUnits::Mps2, 104);
+        let expected = 0.000_488 * ImuCommon::G0;
+        assert!((imu.common.acc_scale - expected).abs() < 1e-7, "Expected {}, got {}", expected, imu.common.acc_scale,);
+    }
+
+    #[test]
+    fn test_gyro_sensitivity() {
+        let cases = [
+            (GyroSensitivity::Scale125Dps, 0.004_375, 0b0010),
+            (GyroSensitivity::Scale250Dps, 0.008_750, 0b0000),
+            (GyroSensitivity::Scale500Dps, 0.017_500, 0b0100),
+            (GyroSensitivity::Scale1000Dps, 0.035_000, 0b1000),
+            (GyroSensitivity::Scale2000Dps, 0.070_000, 0b1100),
+        ];
+
+        for (sensitivity, expected_scale, expected_range) in cases {
+            let bus = MockImuBus::new();
+            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+            let reg = imu.calculate_gyro_scale_and_odr(sensitivity, GyroUnits::Dps, 8000);
+            assert_eq!(reg & 0x0F, expected_range);
+            assert!(
+                (imu.common.gyro_scale - expected_scale).abs() < 1e-9,
+                "Incorrect scale for {:?}: expected {}, got {}",
+                sensitivity,
+                expected_scale,
+                imu.common.gyro_scale,
+            );
+        }
+    }
+
+    #[test]
+    fn test_gyro_sensitivity_radians() {
+        let bus = MockImuBus::new();
+        let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+        _ = imu.calculate_gyro_scale_and_odr(GyroSensitivity::Scale2000Dps, GyroUnits::Rps, 104);
+        let expected = 0.070_f32.to_radians();
+        assert!(
+            (imu.common.gyro_scale - expected).abs() < 1e-7,
+            "Expected {}, got {}",
+            expected,
+            imu.common.gyro_scale,
+        );
+    }
+    #[test]
+    fn test_acc_odr_boundaries() {
+        let cases = [
+            (0, 26, 0x20),
+            (12, 26, 0x20),
+            (13, 26, 0x20),
+            (26, 26, 0x20),
+            (27, 52, 0x30),
+            (52, 52, 0x30),
+            (53, 104, 0x40),
+            (104, 104, 0x40),
+            (105, 208, 0x50),
+            (208, 208, 0x50),
+            (209, 416, 0x60),
+            (416, 416, 0x60),
+            (417, 833, 0x70),
+            (833, 833, 0x70),
+            (834, 1666, 0x80),
+            (1666, 1666, 0x80),
+            (1667, 3332, 0x90),
+            (3332, 3332, 0x90),
+            (3333, 6664, 0xA0),
+            (8000, 6664, 0xA0),
+        ];
+
+        for (requested, expected_rate, expected_register) in cases {
+            let bus = MockImuBus::new();
+            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+            let reg = imu.calculate_acc_scale_and_odr(AccSensitivity::Scale2G, AccUnits::G, requested);
+            assert_eq!(reg & 0xF0, expected_register, "Wrong register for requested ODR {}", requested,);
+            assert_eq!(
+                imu.common.acc_sample_rate_hz, expected_rate,
+                "Wrong reported ODR for requested ODR {}",
+                requested,
+            );
+        }
+    }
+
+    #[test]
+    fn test_gyro_odr_boundaries() {
+        let cases = [
+            (0, 26, 0x20),
+            (1, 26, 0x20),
+            (12, 26, 0x20),
+            (13, 26, 0x20),
+            (26, 26, 0x20),
+            (27, 52, 0x30),
+            (52, 52, 0x30),
+            (53, 104, 0x40),
+            (104, 104, 0x40),
+            (105, 208, 0x50),
+            (208, 208, 0x50),
+            (209, 416, 0x60),
+            (416, 416, 0x60),
+            (417, 833, 0x70),
+            (833, 833, 0x70),
+            (834, 1666, 0x80),
+            (1666, 1666, 0x80),
+            (1667, 3332, 0x90),
+            (3332, 3332, 0x90),
+            (3333, 6664, 0xA0),
+            (8000, 6664, 0xA0),
+        ];
+
+        for (requested, expected_rate, expected_register) in cases {
+            let bus = MockImuBus::new();
+            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+            let reg = imu.calculate_gyro_scale_and_odr(GyroSensitivity::Scale125Dps, GyroUnits::Dps, requested);
+            assert_eq!(reg & 0xF0, expected_register);
+            assert_eq!(
+                imu.common.gyro_sample_rate_hz, expected_rate,
+                "Wrong reported ODR for requested ODR {}",
+                requested,
+            );
+        }
+    }
+    #[test]
+    fn test_device_identification() {
+        let cases = [
+            (
+                WHO_AM_I_RESPONSE_LSM6DS3TR_C,
+                ImuDeviceConfig::MSP_GYRO_ID_LSM6DS3TR,
+                ImuDeviceConfig::MSP_ACC_ID_LSM6DS3TR,
+            ),
+            (
+                WHO_AM_I_RESPONSE_ISM330DHCX,
+                ImuDeviceConfig::MSP_GYRO_ID_ISM330DHCX,
+                ImuDeviceConfig::MSP_ACC_ID_ISM330DHCX,
+            ),
+            (WHO_AM_I_RESPONSE_LSM6DSOX, ImuDeviceConfig::MSP_GYRO_ID_LSM6DSO, ImuDeviceConfig::MSP_ACC_ID_LSM6DSO),
+        ];
+
+        for (device_id, expected_gyro_id, expected_acc_id) in cases {
+            let bus = MockImuBus::new().with_register(Reg::WHO_AM_I, device_id);
+
+            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+            // This test assumes the mock clears SW_RESET when CTRL3_C
+            // is written with SW_RESET. See the mock enhancement below.
+            let result = pollster::block_on(imu.init(
+                104,
+                GyroSensitivity::Scale2000Dps,
+                GyroUnits::Dps,
+                AccSensitivity::Scale16G,
+                AccUnits::G,
+            ));
+            assert!(result.is_ok(), "Failed for device ID {device_id:#04x}");
+
+            assert_eq!(imu.config.device_id, device_id);
+            assert_eq!(imu.config.gyro_id_msp, expected_gyro_id);
+            assert_eq!(imu.config.acc_id_msp, expected_acc_id);
+        }
+    }
+
+    #[test]
+    fn test_incorrect_who_am_i() {
+        let bus = MockImuBus::new().with_register(Reg::WHO_AM_I, 0xFF);
+
+        let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+        let result = pollster::block_on(imu.init(
+            104,
+            GyroSensitivity::Scale2000Dps,
+            GyroUnits::Dps,
+            AccSensitivity::Scale16G,
+            AccUnits::G,
+        ));
+        assert_eq!(result, Err(ImuError::IncorrectWhoAmI));
+    }
+
+    #[test]
+    fn test_init_register_configuration() {
+        let bus = MockImuBus::new().with_register(Reg::WHO_AM_I, WHO_AM_I_RESPONSE_LSM6DS3TR_C);
+
+        let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+
+        let result = pollster::block_on(imu.init(
+            104,
+            GyroSensitivity::Scale500Dps,
+            GyroUnits::Dps,
+            AccSensitivity::Scale4G,
+            AccUnits::G,
+        ));
+        assert_eq!(result, Ok((104, 104)));
+
+        let ctrl3 = pollster::block_on(imu.read_register(Reg::CTRL3_C));
+        assert_eq!(ctrl3, Ok(BDU | IF_INC));
+
+        let ctrl2 = pollster::block_on(imu.read_register(Reg::CTRL2_G));
+        assert_eq!(ctrl2, Ok(0x44));
+
+        let ctrl1 = pollster::block_on(imu.read_register(Reg::CTRL1_XL));
+        assert_eq!(ctrl1, Ok(0x48));
+
+        let int1 = pollster::block_on(imu.read_register(Reg::INT1_CTRL));
+        assert_eq!(int1, Ok(INT1_DRDY_G));
+
+        let int2 = pollster::block_on(imu.read_register(Reg::INT2_CTRL));
+        assert_eq!(int2, Ok(INT2_DRDY_G));
     }
 }

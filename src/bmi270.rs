@@ -2,9 +2,24 @@ use embassy_time::{Duration, Timer};
 use vqm::Vector3f32;
 
 use super::{
-    AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice, ImuDeviceConfig,
-    ImuError,
+    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    ImuDeviceConfig, ImuError,
 };
+
+/// Driver for BMI270 IMU.
+/// Maximum gyro output data rate (ODR) is 3200Hz.
+/// Maximum acc ODR is 1600Hz.
+/// Minimum supported ODR is 25Hz.
+/// Acc and gyro readings are taken simultaneously, so, when running at 3200Hz,
+/// acc readings are returned at 3200Hz, but only updated at 1600Hz.
+/// Maximum gyro range is +/- 2000 DPS.
+/// Maximum acc range is +/- 16G.
+#[derive(Debug, PartialEq)]
+pub struct Bmi270<B: ImuBus> {
+    pub bus: B,
+    pub common: ImuCommon,
+    pub config: ImuDeviceConfig,
+}
 
 const I2C_ADDRESS: u8 = 0x68;
 const I2C_ADDRESS_ALTERNATIVE: u8 = 0x69;
@@ -150,20 +165,13 @@ enum Bmi270InitializationStates {
     CompatibilityError = 7,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Bmi270<B: ImuBus> {
-    pub bus: B,
-    pub common: ImuCommon,
-    pub config: ImuDeviceConfig,
-}
-
 impl<B: ImuBus> ImuDevice for Bmi270<B> {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         Bmi270::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
@@ -316,13 +324,15 @@ impl<B: ImuBus> Bmi270<B> {
         }
     }
 
+    /// Initialize IMU by resetting and setting registers.
+    /// Returns `(gyro_sample_rate_hz, acc_sample_rate_hz)`.
     /// # Errors
     pub async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError> {
         const DATA_READY_INI_1: u8 = 0b_0000_0100;
@@ -330,6 +340,11 @@ impl<B: ImuBus> Bmi270<B> {
         const ACTIVE_HIGH: u8 = 0b_0000_0010; // active high and active low are the only options
         const OUTPUT_ENABLE: u8 = 0b_0000_1000;
 
+        // Select SPI interface after power-on/reset.
+        // The response from this initial read must be discarded.
+        if self.bus.is_spi() {
+            let _ = self.read_register(Reg::CHIP_ID).await?;
+        }
         // Check WhoAmI
         let chip_id = self.read_register(Reg::CHIP_ID).await?;
         if chip_id != Self::DEVICE_ID {
@@ -350,8 +365,8 @@ impl<B: ImuBus> Bmi270<B> {
         // Write 8kB initialization data to Register INIT_DATA. This requires 6.6ms at 10 MHz SPI I/F frequency.
         _ = self.load_configuration_data().await?;
 
-        // disable advanced power save, enable FIFO self-wake - power mode
-        self.write_register(Reg::PWR_CONF, 0x02).await?;
+        // Disable power save and FIFO self-wakeup.
+        self.write_register(Reg::PWR_CONF, 0x00).await?;
         delay_ms(1).await;
 
         // disable FIFO
@@ -372,40 +387,48 @@ impl<B: ImuBus> Bmi270<B> {
         self.write_register(Reg::INT_LATCH, 0).await?;
         delay_ms(1).await;
 
-        let (gyro_range, gyro_odr) =
+        let (gyro_range, gyro_conf) =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
         self.write_register(Reg::GYR_RANGE, gyro_range).await?;
         delay_ms(1).await;
-        self.write_register(Reg::GYR_CONF, gyro_odr).await?;
+        self.write_register(Reg::GYR_CONF, gyro_conf).await?;
         delay_ms(1).await;
 
-        let (acc_range, acc_odr) =
+        let (acc_range, acc_conf) =
             self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
         self.write_register(Reg::ACC_RANGE, acc_range).await?;
         delay_ms(1).await;
-        self.write_register(Reg::ACC_CONF, acc_odr).await?;
+        self.write_register(Reg::ACC_CONF, acc_conf).await?;
         delay_ms(1).await;
 
         // enable gyro, acc and temp sensors
         self.write_register(Reg::PWR_CTRL, 0x0E).await?;
-        delay_ms(5).await;
+        delay_ms(50).await; // minimum startup time is 45ms
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
     }
 
+    /// Calculate and set `gyro_scale` and `gyro_sample_rate` given the requested gyro sensitivity, units, and ODR.
+    /// Targets are rounded upwards.
+    /// Values greater than the maximum supported result in setting maximum supported value.
+    ///
+    /// Returns `(gyro_range, gyro_conf)`, the value needed to set the `GYRO_RANGE` and `GYRO_CONF` registers.
     pub fn calculate_gyro_scale_and_odr(
         &mut self,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
         target_output_data_rate_hz: u32,
     ) -> (u8, u8) {
+        const GYRO_FILTER_PERFORMANCE_OPTIMIZED: u8 = 0b_1100_0000; // ie not power optimized
+        const GYRO_FILTER_OSR4: u8 = 0x00;
+
         const GYRO_RANGE_125_DPS: u8 = 0x04;
         const GYRO_RANGE_250_DPS: u8 = 0x03;
         const GYRO_RANGE_500_DPS: u8 = 0x02;
         const GYRO_RANGE_1000_DPS: u8 = 0x01;
         const GYRO_RANGE_2000_DPS: u8 = 0x00;
-        const GYRO_FILTER_PERFORMANCE_OPTIMIZED: u8 = 0b_1100_0000; // ie not power optimized
+
         const GYRO_ODR_25_HZ: u8 = 0x06;
         const GYRO_ODR_50_HZ: u8 = 0x07;
         const GYRO_ODR_100_HZ: u8 = 0x08;
@@ -416,10 +439,10 @@ impl<B: ImuBus> Bmi270<B> {
         const GYRO_ODR_3200_HZ: u8 = 0x0D; // for gyro only, acc does not support this rate
 
         let (scale_dps, gyro_range) = match gyro_sensitivity {
-            GyroFullScale::Scale125Dps => (125.0 / 32768.0, GYRO_RANGE_125_DPS),
-            GyroFullScale::Scale250Dps => (250.0 / 32768.0, GYRO_RANGE_250_DPS),
-            GyroFullScale::Scale500Dps => (500.0 / 32768.0, GYRO_RANGE_500_DPS),
-            GyroFullScale::Scale1000Dps => (1000.0 / 32768.0, GYRO_RANGE_1000_DPS),
+            GyroSensitivity::Scale125Dps => (125.0 / 32768.0, GYRO_RANGE_125_DPS),
+            GyroSensitivity::Scale250Dps => (250.0 / 32768.0, GYRO_RANGE_250_DPS),
+            GyroSensitivity::Scale500Dps => (500.0 / 32768.0, GYRO_RANGE_500_DPS),
+            GyroSensitivity::Scale1000Dps => (1000.0 / 32768.0, GYRO_RANGE_1000_DPS),
             _ => (2000.0 / 32768.0, GYRO_RANGE_2000_DPS),
         };
         self.common.gyro_scale = if gyro_units == GyroUnits::Dps { scale_dps } else { scale_dps.to_radians() };
@@ -431,23 +454,29 @@ impl<B: ImuBus> Bmi270<B> {
             101..=200 => (200, GYRO_ODR_200_HZ),
             51..=100 => (100, GYRO_ODR_100_HZ),
             26..=50 => (50, GYRO_ODR_50_HZ),
-            1..=25 => (25, GYRO_ODR_25_HZ),
+            0..=25 => (25, GYRO_ODR_25_HZ),
             _ => (3200, GYRO_ODR_3200_HZ),
         };
         self.common.gyro_sample_rate_hz = gyro_sample_rate_hz;
 
-        (gyro_range, gyro_odr | GYRO_FILTER_PERFORMANCE_OPTIMIZED)
+        (gyro_range, gyro_odr | GYRO_FILTER_PERFORMANCE_OPTIMIZED | GYRO_FILTER_OSR4)
     }
 
-    /// Calculate the closest acc scale and output data rate to the requested values, rounding upwards.
+    /// Calculate and set `acc_scale` and `acc_sample_rate` given the requested acc sensitivity, units, and ODR.
+    /// Targets are rounded upwards.
+    /// Values greater than the maximum supported result in setting maximum supported value.
     /// Note: we allow and accelerometer ODR of 1600Hz when the gyro ODR is 3200Hz.
+    ///
+    /// Returns `(acc_range, acc_conf)`, the value needed to set the `ACC_RANGE` and `ACC_CONF` registers.
     pub fn calculate_acc_scale_and_odr(
         &mut self,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
         target_output_data_rate_hz: u32,
     ) -> (u8, u8) {
         const ACC_FILTER_PERFORMANCE_OPTIMIZED: u8 = 0b_1000_0000; // ie not power optimized
+        const ACC_FILTER_OSR4: u8 = 0x00;
+
         const ACC_ODR_25_HZ: u8 = 0x06;
         const ACC_ODR_50_HZ: u8 = 0x07;
         const ACC_ODR_100_HZ: u8 = 0x08;
@@ -461,9 +490,9 @@ impl<B: ImuBus> Bmi270<B> {
         const ACC_RANGE_16G: u8 = 0x03;
 
         let (scale, acc_range) = match acc_sensitivity {
-            AccFullScale::Scale2G => (2.0 / 32768.0, ACC_RANGE_2G),
-            AccFullScale::Scale4G => (4.0 / 32768.0, ACC_RANGE_4G),
-            AccFullScale::Scale8G => (8.0 / 32768.0, ACC_RANGE_8G),
+            AccSensitivity::Scale2G => (2.0 / 32768.0, ACC_RANGE_2G),
+            AccSensitivity::Scale4G => (4.0 / 32768.0, ACC_RANGE_4G),
+            AccSensitivity::Scale8G => (8.0 / 32768.0, ACC_RANGE_8G),
             _ => {
                 // default includes  AccFullScale::Scale16G
                 (16.0 / 32768.0, ACC_RANGE_16G)
@@ -477,18 +506,24 @@ impl<B: ImuBus> Bmi270<B> {
             101..=200 => (200, ACC_ODR_200_HZ),
             51..=100 => (100, ACC_ODR_100_HZ),
             26..=50 => (50, ACC_ODR_50_HZ),
-            1..=25 => (25, ACC_ODR_25_HZ),
+            0..=25 => (25, ACC_ODR_25_HZ),
             _ => (1600, ACC_ODR_1600_HZ),
         };
         self.common.acc_sample_rate_hz = acc_sample_rate_hz;
 
-        (acc_range, acc_odr | ACC_FILTER_PERFORMANCE_OPTIMIZED)
+        (acc_range, acc_odr | ACC_FILTER_PERFORMANCE_OPTIMIZED | ACC_FILTER_OSR4)
     }
 
     async fn load_configuration_data(&mut self) -> Result<u8, ImuError> {
         const BUS_WRITE_CHUNK_SIZE: usize = 32;
+        const CONFIG_TIMEOUT_MS: u32 = 20;
+        const CONFIG_POLL_INTERVAL_MS: u32 = 1;
 
-        // Power save disabled
+        // check that the configuration array has an even length and that it fits in a 12-bit address space.
+        debug_assert_eq!(IMU_BMI270_CONFIG_DATA.len() % 2, 0);
+        debug_assert!(IMU_BMI270_CONFIG_DATA.len() / 2 <= 0x1000);
+
+        // Disable power save and FIFO self-wakeup.
         self.write_register(Reg::PWR_CONF, 0x00).await?;
         // 450us is minimum delay required
         delay_ms(1).await;
@@ -516,12 +551,14 @@ impl<B: ImuBus> Bmi270<B> {
         self.write_register(Reg::INIT_CTRL, 0x01).await?;
 
         // Wait for initialization to complete (maximum 20 ms).
-        for _ in 0..20 {
-            delay_ms(1).await;
+        for _ in 0..CONFIG_TIMEOUT_MS {
+            const INTERNAL_STATUS_MESSAGE_MASK: u8 = 0x0F;
+            const INTERNAL_STATUS_ERROR_MASK: u8 = 0x60;
+            delay_ms(CONFIG_POLL_INTERVAL_MS).await;
 
             let internal_status = self.read_register(Reg::INTERNAL_STATUS).await?;
-            if internal_status == Bmi270InitializationStates::Ok as u8
-                || internal_status == Bmi270InitializationStates::SensorsStopped as u8
+            if internal_status & INTERNAL_STATUS_MESSAGE_MASK == Bmi270InitializationStates::Ok as u8
+                && internal_status & INTERNAL_STATUS_ERROR_MASK == 0
             {
                 return Ok(internal_status);
             }
@@ -992,7 +1029,7 @@ mod tests {
         assert_eq!(Ok(Bmi270::<MockImuBus>::DEVICE_ID), result);
 
         let result =
-            pollster::block_on(imu.init(3200, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G));
+            pollster::block_on(imu.init(3200, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));
         assert_eq!(Ok((3200, 1600)), result);
 
         assert!(result.is_ok());

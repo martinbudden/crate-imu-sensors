@@ -51,6 +51,10 @@ impl ImuDeviceConfig {
     pub const MSP_ACC_ID_BMI160: u16 = 13;
     pub const MSP_ACC_ID_BMI270: u16 = 14;
     pub const MSP_ACC_ID_LSM6DSO: u16 = 15;
+    // No Betaflight id for LSM6DS3TR, report as LSM6DSO
+    pub const MSP_ACC_ID_LSM6DS3TR: u16 = ImuDeviceConfig::MSP_ACC_ID_LSM6DSO;
+    // No Betaflight id for ISM330DHCX, report as LSM6DSO
+    pub const MSP_ACC_ID_ISM330DHCX: u16 = ImuDeviceConfig::MSP_ACC_ID_LSM6DSO;
     pub const MSP_ACC_ID_LSM6DSV16X: u16 = 16;
     pub const MSP_ACC_ID_IIM42653: u16 = 17;
     pub const MSP_ACC_ID_ICM45605: u16 = 18;
@@ -80,6 +84,10 @@ impl ImuDeviceConfig {
     pub const MSP_GYRO_ID_BMI160: u16 = 14;
     pub const MSP_GYRO_ID_BMI270: u16 = 15;
     pub const MSP_GYRO_ID_LSM6DSO: u16 = 16;
+    // No Betaflight id for LSM6DS3TR, report as LSM6DSO
+    pub const MSP_GYRO_ID_LSM6DS3TR: u16 = ImuDeviceConfig::MSP_GYRO_ID_LSM6DSO;
+    // No Betaflight id for ISM330DHCX, report as LSM6DSO
+    pub const MSP_GYRO_ID_ISM330DHCX: u16 = ImuDeviceConfig::MSP_GYRO_ID_LSM6DSO;
     pub const MSP_GYRO_ID_LSM6DSV16X: u16 = 17;
     pub const MSP_GYRO_ID_IIM42653: u16 = 18;
     pub const MSP_GYRO_ID_ICM45605: u16 = 19;

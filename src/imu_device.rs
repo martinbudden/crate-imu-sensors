@@ -1,6 +1,6 @@
 use vqm::Vector3f32;
 
-use super::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuError};
+use super::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, ImuError};
 
 #[allow(async_fn_in_trait)]
 pub trait ImuDevice {
@@ -8,9 +8,9 @@ pub trait ImuDevice {
     async fn init(
         &mut self,
         target_output_data_rate_hz: u32,
-        gyro_sensitivity: GyroFullScale,
+        gyro_sensitivity: GyroSensitivity,
         gyro_units: GyroUnits,
-        acc_sensitivity: AccFullScale,
+        acc_sensitivity: AccSensitivity,
         acc_units: AccUnits,
     ) -> Result<(u32, u32), ImuError>;
 

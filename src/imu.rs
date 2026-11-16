@@ -4,7 +4,7 @@ use vqm::Vector3f32;
 
 /// Accelerometer scale factor.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum AccFullScale {
+pub enum AccSensitivity {
     #[default]
     Max = 0,
     Scale1G = 1,
@@ -30,7 +30,7 @@ pub enum AccUnits {
 
 /// Gyro scale factor.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum GyroFullScale {
+pub enum GyroSensitivity {
     #[default]
     Max = 0,
     Scale15p625Dps = 1,
