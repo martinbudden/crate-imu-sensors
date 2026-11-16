@@ -102,10 +102,6 @@ impl<B: ImuBus> ImuDevice for Mpu6050<B> {
     ) -> Result<(u32, u32), ImuError> {
         Mpu6050::init(self, target_output_data_rate_hz, gyro_sensitivity, gyro_units, acc_sensitivity, acc_units).await
     }
-
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
-        <Self as Imu>::read_acc_gyro(self).await
-    }
 }
 
 impl<B: ImuBus> Imu for Mpu6050<B> {
