@@ -92,7 +92,7 @@ const CONFIG_DLPF_176HZ: u8 = 0x01;
 
 #[derive(Debug, PartialEq)]
 pub struct Icm20602<B: ImuBus> {
-    pub bus: B,
+    bus: B,
     pub common: ImuCommon,
     pub config: ImuDeviceConfig,
 }

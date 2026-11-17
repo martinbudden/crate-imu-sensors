@@ -138,7 +138,7 @@ const WHO_AM_I_RESPONSE_ICM42688P: u8 = 0x47;
 #[allow(missing_docs)]
 #[derive(Debug, PartialEq)]
 pub struct Imu426xx<B: ImuBus> {
-    pub bus: B,
+    bus: B,
     pub common: ImuCommon,
     pub config: ImuDeviceConfig,
 }

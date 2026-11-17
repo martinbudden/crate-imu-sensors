@@ -3,7 +3,7 @@ use embedded_hal::digital::OutputPin;
 
 // Wrapper for SPI
 pub struct SpiInterface<B, CS> {
-    pub bus: B,
+    bus: B,
     pub cs: CS,
 }
 

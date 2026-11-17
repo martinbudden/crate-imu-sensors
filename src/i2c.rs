@@ -1,6 +1,6 @@
 #[allow(unused)]
 pub struct I2cInterface<B> {
-    pub bus: B,
+    bus: B,
     pub address: u8,
 }
 

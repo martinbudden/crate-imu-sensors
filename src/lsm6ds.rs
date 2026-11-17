@@ -12,7 +12,7 @@ use super::{
 /// Maximum acc range is +/- 16G.
 #[derive(Debug, PartialEq)]
 pub struct Lsm6ds<B: ImuBus> {
-    pub bus: B,
+    bus: B,
     pub common: ImuCommon,
     pub config: ImuDeviceConfig,
 }

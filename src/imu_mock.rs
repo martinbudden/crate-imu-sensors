@@ -25,7 +25,7 @@ impl Reg {
 #[allow(missing_docs)]
 #[derive(Debug, PartialEq)]
 pub struct ImuMock<B: ImuBus> {
-    pub bus: B,
+    bus: B,
     pub common: ImuCommon,
     pub config: ImuDeviceConfig,
 }

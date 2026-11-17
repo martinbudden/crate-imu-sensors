@@ -22,6 +22,15 @@ where
     }
 
     async fn bus_write_read(&mut self, address: u8, write: &[u8], read: &mut [u8]) -> Result<(), ImuError> {
-        self.bus.write_read(address, write, read).await.map_err(|_| ImuError::I2cBus)
+        if write.is_empty() {
+            return Err(ImuError::I2cBus);
+        }
+        if read.is_empty() {
+            // I2C write-only transaction.
+            self.bus.write(address, write).await.map_err(|_| ImuError::I2cBusWrite)
+        } else {
+            // I2C register read using repeated START.
+            self.bus.write_read(address, write, read).await.map_err(|_| ImuError::I2cBusRead)
+        }
     }
 }

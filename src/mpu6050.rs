@@ -86,7 +86,7 @@ const _CLKSEL_EXTERNAL_19P2_MHZ: u8 = 0x05;
 ///
 #[derive(Debug, PartialEq)]
 pub struct Mpu6050<B: ImuBus> {
-    pub bus: B,
+    bus: B,
     pub common: ImuCommon,
     pub config: ImuDeviceConfig,
 }

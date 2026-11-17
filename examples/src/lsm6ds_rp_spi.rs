@@ -21,7 +21,7 @@ use embassy_time::{Duration, Timer};
 use embedded_hal_bus::spi::ExclusiveDevice;
 use {defmt_rtt as _, panic_probe as _};
 
-use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuSpiBus, Lsm6ds};
+use imu_sensors::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuSpiBus, Lsm6ds};
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>,
@@ -54,7 +54,7 @@ async fn main(_spawner: Spawner) {
     // Initialize IMU. Exit with a message if initialization fails.
     let target_output_data_rate_hz = 1000;
     let (acc_odr, gyro_odr) = imu
-        .init(target_output_data_rate_hz, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G)
+        .init(target_output_data_rate_hz, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G)
         .await
         .unwrap_or_else(|e| panic!("IMU initialization failed. Error code: {e:?}"));
 

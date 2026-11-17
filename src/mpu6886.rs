@@ -92,7 +92,7 @@ impl Reg {
 
 #[derive(Debug, PartialEq)]
 pub struct Mpu6886<B: ImuBus> {
-    pub bus: B,
+    bus: B,
     pub common: ImuCommon,
     pub config: ImuDeviceConfig,
 }

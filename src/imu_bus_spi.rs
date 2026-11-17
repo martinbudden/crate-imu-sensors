@@ -31,12 +31,13 @@ where
             // write = [register, data...]
             self.bus.write(write).await.map_err(|_| ImuError::SpiBusWrite)
         } else {
-            // SPI read.
+            // SPI read, we write the register to be read.
+            debug_assert!(write.len() != 1);
+
             // SPI reads require bit 7 of the register address to be set.
             // ExclusiveDevice keeps CS asserted across the complete transaction,
             // so the register command and data transfer form one SPI transaction.
             let command = [write[0] | 0x80];
-
             self.bus
                 .transaction(&mut [Operation::Write(&command), Operation::Read(read)])
                 .await

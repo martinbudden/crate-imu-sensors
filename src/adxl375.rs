@@ -50,7 +50,7 @@ const WHO_AM_I_RESPONSE_ADXL375: u8 = 0b_1110_0101; // 0xE5
 
 #[derive(Debug, PartialEq)]
 pub struct Adxl375<B: ImuBus> {
-    pub bus: B,
+    bus: B,
     pub common: ImuCommon,
     pub config: ImuDeviceConfig,
 }

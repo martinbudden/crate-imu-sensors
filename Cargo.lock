@@ -545,9 +545,9 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
 name = "pollster"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc6355899e1c9462875b6757c79f3caa011a1fdae12bbb1a2e72dd1f234f8336"
+checksum = "3c2c80c4e3afbec8224b9d3e641fbf3a5690cc7595b887b0a27a926bb357ed5c"
 
 [[package]]
 name = "portable-atomic"
@@ -812,8 +812,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb7ad45d31dcabef886a8f8a6300b0c8c902b59b6867bf87db6ea7fac8874857"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#065bf1c3f488525e3a460d9eedcc5b81a72c2b9e"
 dependencies = [
  "derive_more",
  "libm",

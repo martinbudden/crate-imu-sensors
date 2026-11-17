@@ -18,7 +18,7 @@ use embassy_rp::{
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
-use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu, ImuAxisOrder, ImuI2cBus, Lsm6ds};
+use imu_sensors::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuI2cBus, Lsm6ds};
 
 // Bind the I2C interrupt to Embassy's I2C interrupt handler.
 bind_interrupts!(struct Irqs {
@@ -45,7 +45,7 @@ async fn main(_spawner: Spawner) {
     // Initialize IMU. Exit with a message if initialization fails.
     let target_output_data_rate_hz = 1000;
     let (acc_odr, gyro_odr) = imu
-        .init(target_output_data_rate_hz, GyroFullScale::Max, GyroUnits::Dps, AccFullScale::Max, AccUnits::G)
+        .init(target_output_data_rate_hz, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G)
         .await
         .unwrap_or_else(|e| panic!("IMU initialization failed. Error code: {e:?}"));
 
