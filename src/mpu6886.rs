@@ -1,4 +1,4 @@
-use embassy_time::{Duration, Timer};
+use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
@@ -133,23 +133,28 @@ impl<B: ImuBus> Imu for Mpu6886<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::ACCEL_XOUT_H], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let acc = Vector3f32::from_be_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let gyro = Vector3f32::from_be_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, gyro), timestamp))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 14];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
+        let timestamp = Instant::now();
 
         let [a0, a1, a2, a3, a4, a5, _t0, _t1, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -157,12 +162,9 @@ impl<B: ImuBus> Imu for Mpu6886<B> {
         let gyro_buf = [g0, g1, g2, g3, g4, g5];
         let acc = Vector3f32::from_be_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
         let gyro = Vector3f32::from_be_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro))
+        let (acc, gyro) = ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro);
+        Ok((acc, gyro, timestamp))
     }
-}
-
-async fn delay_ms(delay: u32) {
-    Timer::after(Duration::from_millis(delay.into())).await;
 }
 
 impl<B: ImuBus> Mpu6886<B> {
@@ -207,13 +209,13 @@ impl<B: ImuBus> Mpu6886<B> {
     ) -> Result<(u32, u32), ImuError> {
         // Clear the power management register.
         self.write_register(Reg::PWR_MGMT_1, 0).await?;
-        delay_ms(10).await;
+        ImuCommon::delay_ms(10).await;
 
         // Reset the device.
         {
             const DEVICE_RESET: u8 = 0x01u8 << 7;
             self.write_register(Reg::PWR_MGMT_1, DEVICE_RESET).await?;
-            delay_ms(10).await;
+            ImuCommon::delay_ms(10).await;
         }
 
         // Check WhoAmI
@@ -221,60 +223,60 @@ impl<B: ImuBus> Mpu6886<B> {
         if chip_id != Self::DEVICE_ID {
             return Err(ImuError::IncorrectWhoAmI);
         }
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // CLKSEL must be set to 001 to achieve full gyroscope performance.
         {
             const CLKSEL_1: u8 = 0x01;
             self.write_register(Reg::PWR_MGMT_1, CLKSEL_1).await?;
-            delay_ms(10).await;
+            ImuCommon::delay_ms(10).await;
         }
 
         let (config, divider) =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
 
         self.write_register(Reg::GYRO_CONFIG, config).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         self.write_register(Reg::SAMPLE_RATE_DIVIDER, divider).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         let acc_register_value =
             self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
 
         self.write_register(Reg::ACCEL_CONFIG, acc_register_value).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // Configure filtering.
         {
             const ACC_FCHOICE_B: u8 = 0x00; // Filter:218.1 3-DB BW (Hz), least filtered 1kHz update variant
             self.write_register(Reg::ACCEL_CONFIG2, ACC_FCHOICE_B).await?;
-            delay_ms(1).await;
+            ImuCommon::delay_ms(1).await;
         }
 
         // Configure FIFO.
         self.write_register(Reg::FIFO_ENABLE, 0x00).await?; // FIFO disabled
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
         {
             const FIFO_MODE_OVERWRITE: u8 = 0b_0100_0000;
             self.write_register(Reg::CONFIG, Reg::DLPF_CFG_1 | FIFO_MODE_OVERWRITE).await?;
-            delay_ms(1).await;
+            ImuCommon::delay_ms(1).await;
         }
 
         // Configure interrupts.
         // M5 Unified settings
         //self.write_register(INT_PIN_CFG, 0b_1100_0000).await; // Active low, open drain 50us pulse width, clear on read
         self.write_register(Reg::INT_PIN_CFG, 0x22).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         {
             const DATA_RDY_INT_EN: u8 = 0x01;
             self.write_register(Reg::INT_ENABLE, DATA_RDY_INT_EN).await?; // data ready interrupt enabled
-            delay_ms(10).await;
+            ImuCommon::delay_ms(10).await;
         }
 
         self.write_register(Reg::USER_CTRL, 0x00).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))

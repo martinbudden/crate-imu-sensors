@@ -1,5 +1,6 @@
 use super::{ImuAxisOrder, ImuBus, ImuError, imu_device_config::ImuDeviceConfig};
 
+use embassy_time::{Duration, Instant, Timer};
 use vqm::Vector3f32;
 
 /// Accelerometer scale factor.
@@ -87,6 +88,10 @@ impl ImuCommon {
             axis_order,
         }
     }
+
+    pub async fn delay_ms(delay: u32) {
+        Timer::after(Duration::from_millis(delay.into())).await;
+    }
 }
 
 impl Default for ImuCommon {
@@ -115,11 +120,11 @@ pub trait Imu {
         self.bus().bus_write_read(address, write, read).await
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError>;
+    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError>;
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError>;
+    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError>;
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError>;
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError>;
 
     #[inline]
     #[must_use]

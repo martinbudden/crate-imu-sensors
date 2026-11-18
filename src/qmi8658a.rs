@@ -1,4 +1,4 @@
-use embassy_time::{Duration, Timer};
+use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
@@ -95,23 +95,28 @@ impl<B: ImuBus> Imu for Qmi8658a<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::AX_L], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::GX_L], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, gyro), timestamp))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 12];
         self.write_read(&[Reg::AX_L], &mut buf).await?;
+        let timestamp = Instant::now();
 
         let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -119,12 +124,9 @@ impl<B: ImuBus> Imu for Qmi8658a<B> {
         let gyro_buf = [g0, g1, g2, g3, g4, g5];
         let acc = Vector3f32::from_le_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
         let gyro = Vector3f32::from_le_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro))
+        let (acc, gyro) = ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro);
+        Ok((acc, gyro, timestamp))
     }
-}
-
-async fn delay_ms(delay: u32) {
-    Timer::after(Duration::from_millis(delay.into())).await;
 }
 
 impl<B: ImuBus> Qmi8658a<B> {
@@ -190,28 +192,28 @@ impl<B: ImuBus> Qmi8658a<B> {
         // soft RESET
         self.write_register(Reg::RESET, 0x0b).await?;
         // soft reset takes a maximum of 15ms
-        delay_ms(15).await;
+        ImuCommon::delay_ms(15).await;
 
         // Check WhoAmI
         let chip_id = self.read_register(Reg::WHO_AM_I).await?;
         if chip_id != Self::DEVICE_ID {
             return Err(ImuError::IncorrectWhoAmI);
         }
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // CTRL1
         self.write_register(Reg::CTRL1, ADDRESS_AUTO_INCREMENT | INT2_ENABLE).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // CTRL2
         let ctrl2 = self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
         self.write_register(Reg::CTRL2, ctrl2).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // CTRL3
         let ctrl3 = self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
         self.write_register(Reg::CTRL3, ctrl3).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // No CTRL4
         // CTRL5 is LPF filters - leave all off
@@ -219,7 +221,7 @@ impl<B: ImuBus> Qmi8658a<B> {
 
         // CTRL7, DRDY is enabled by default, sets INT2 pin high
         self.write_register(Reg::CTRL7, GYRO_ENABLE | ACC_ENABLE).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
         // CTRL8 is motion detection - leave all off
 
         // return the gyro and acc sample rates actually set

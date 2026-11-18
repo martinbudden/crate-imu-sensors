@@ -1,4 +1,4 @@
-use embassy_time::{Duration, Timer};
+use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
@@ -203,75 +203,78 @@ impl<B: ImuBus> Imu for Bmi270<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         // For BMI270 SPI the first byte received is a dummy byte.
-        let acc = if self.bus.is_spi() {
+        let (acc, timestamp) = if self.bus.is_spi() {
             let mut buf = [0u8; 7];
             self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
+            let timestamp = Instant::now();
 
             // Destructure the 7-byte array reference into a 1-byte and a 6-byte array reference
             let [_, ref bytes_6 @ ..] = buf;
-            Vector3f32::from_le_bytes_6(*bytes_6)
+            (Vector3f32::from_le_bytes_6(*bytes_6), timestamp)
         } else {
             let mut buf = [0u8; 6];
             self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
+            let timestamp = Instant::now();
 
-            Vector3f32::from_le_bytes_6(buf)
+            (Vector3f32::from_le_bytes_6(buf), timestamp)
         };
         let acc = acc * self.common.acc_scale - self.common.acc_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         // For BMI270 SPI the first byte received is a dummy byte.
-        let gyro = if self.bus.is_spi() {
+        let (gyro, timestamp) = if self.bus.is_spi() {
             let mut buf = [0u8; 7];
             self.write_read(&[Reg::GYRO_X_L], &mut buf).await?;
+            let timestamp = Instant::now();
 
             // Destructure the 7-byte array reference into a 1-byte and a 6-byte array reference
             let [_, ref bytes_6 @ ..] = buf;
-            Vector3f32::from_le_bytes_6(*bytes_6)
+            (Vector3f32::from_le_bytes_6(*bytes_6), timestamp)
         } else {
             let mut buf = [0u8; 6];
             self.write_read(&[Reg::GYRO_X_L], &mut buf).await?;
+            let timestamp = Instant::now();
 
-            Vector3f32::from_le_bytes_6(buf)
+            (Vector3f32::from_le_bytes_6(buf), timestamp)
         };
 
         let gyro = gyro * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, gyro), timestamp))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
         // For BMI270 SPI the first byte received is a dummy byte.
-        let (acc, gyro) = if self.bus.is_spi() {
+        let (acc, gyro, timestamp) = if self.bus.is_spi() {
             let mut buf = [0u8; 13];
             self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
+            let timestamp = Instant::now();
 
             let [_dummy, a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
             let acc_buf = [a0, a1, a2, a3, a4, a5];
             let gyro_buf = [g0, g1, g2, g3, g4, g5];
-            (Vector3f32::from_le_bytes_6(acc_buf), Vector3f32::from_le_bytes_6(gyro_buf))
+            (Vector3f32::from_le_bytes_6(acc_buf), Vector3f32::from_le_bytes_6(gyro_buf), timestamp)
         } else {
             let mut buf = [0u8; 12];
             self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
+            let timestamp = Instant::now();
 
             let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
             let acc_buf = [a0, a1, a2, a3, a4, a5];
             let gyro_buf = [g0, g1, g2, g3, g4, g5];
-            (Vector3f32::from_le_bytes_6(acc_buf), Vector3f32::from_le_bytes_6(gyro_buf))
+            (Vector3f32::from_le_bytes_6(acc_buf), Vector3f32::from_le_bytes_6(gyro_buf), timestamp)
         };
 
         let acc = acc * self.common.acc_scale - self.common.acc_offset;
         let gyro = gyro * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro))
+        let (acc, gyro) = ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro);
+        Ok((acc, gyro, timestamp))
     }
-}
-
-async fn delay_ms(delay: u32) {
-    Timer::after(Duration::from_millis(delay.into())).await;
 }
 
 impl<B: ImuBus> Bmi270<B> {
@@ -346,16 +349,16 @@ impl<B: ImuBus> Bmi270<B> {
         if chip_id != Self::DEVICE_ID {
             return Err(ImuError::IncorrectWhoAmI);
         }
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // Software reset
         self.write_register(Reg::CMD, 0xB6).await?; // Soft reset
-        delay_ms(100).await;
+        ImuCommon::delay_ms(100).await;
 
         // Set to SPI mode
         if self.bus.is_spi() {
             self.write_register(Reg::NV_CONF, NV_CONF_SPI_ENABLE).await?;
-            delay_ms(1).await;
+            ImuCommon::delay_ms(1).await;
         }
 
         // Write 8kB initialization data to Register INIT_DATA. This requires 6.6ms at 10 MHz SPI I/F frequency.
@@ -363,43 +366,43 @@ impl<B: ImuBus> Bmi270<B> {
 
         // Disable power save and FIFO self-wakeup.
         self.write_register(Reg::PWR_CONF, 0x00).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // disable FIFO
         self.write_register(Reg::FIFO_CONFIG_1, 0x00).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // configure interrupts
         // enable the data ready interrupt pins 1 and 2
         self.write_register(Reg::INT_MAP_DATA, DATA_READY_INI_1 | DATA_READY_INI_2).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
         // input disabled, push-pull are defaults
         self.write_register(Reg::INT1_IO_CTRL, OUTPUT_ENABLE | ACTIVE_HIGH).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
         // input disabled, push-pull are defaults
         self.write_register(Reg::INT2_IO_CTRL, OUTPUT_ENABLE | ACTIVE_HIGH).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
         // interrupt latching off
         self.write_register(Reg::INT_LATCH, 0).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         let (gyro_range, gyro_conf) =
             self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
         self.write_register(Reg::GYR_RANGE, gyro_range).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
         self.write_register(Reg::GYR_CONF, gyro_conf).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         let (acc_range, acc_conf) =
             self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
         self.write_register(Reg::ACC_RANGE, acc_range).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
         self.write_register(Reg::ACC_CONF, acc_conf).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // enable gyro, acc and temp sensors
         self.write_register(Reg::PWR_CTRL, 0x0E).await?;
-        delay_ms(50).await; // minimum startup time is 45ms
+        ImuCommon::delay_ms(50).await; // minimum startup time is 45ms
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))
@@ -522,7 +525,7 @@ impl<B: ImuBus> Bmi270<B> {
         // Disable power save and FIFO self-wakeup.
         self.write_register(Reg::PWR_CONF, 0x00).await?;
         // 450us is minimum delay required
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // Prepare configuration loading.
         self.write_register(Reg::INIT_CTRL, 0x00).await?;
@@ -550,7 +553,7 @@ impl<B: ImuBus> Bmi270<B> {
         for _ in 0..CONFIG_TIMEOUT_MS {
             const INTERNAL_STATUS_MESSAGE_MASK: u8 = 0x0F;
             const INTERNAL_STATUS_ERROR_MASK: u8 = 0x60;
-            delay_ms(CONFIG_POLL_INTERVAL_MS).await;
+            ImuCommon::delay_ms(CONFIG_POLL_INTERVAL_MS).await;
 
             let internal_status = self.read_register(Reg::INTERNAL_STATUS).await?;
             if internal_status & INTERNAL_STATUS_MESSAGE_MASK == Bmi270InitializationStates::Ok as u8

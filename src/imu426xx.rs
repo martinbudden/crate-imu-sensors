@@ -1,4 +1,4 @@
-use embassy_time::{Duration, Timer};
+use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
@@ -179,23 +179,28 @@ impl<B: ImuBus> Imu for Imu426xx<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::ACCEL_DATA_X1], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::GYRO_DATA_X1], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, gyro), timestamp))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 12];
         self.write_read(&[Reg::ACCEL_DATA_X1], &mut buf).await?;
+        let timestamp = Instant::now();
 
         let [a0, a1, a2, a3, a4, a5, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -203,12 +208,9 @@ impl<B: ImuBus> Imu for Imu426xx<B> {
         let gyro_buf = [g0, g1, g2, g3, g4, g5];
         let acc = Vector3f32::from_le_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
         let gyro = Vector3f32::from_le_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro))
+        let (acc, gyro) = ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro);
+        Ok((acc, gyro, timestamp))
     }
-}
-
-async fn delay_ms(delay: u32) {
-    Timer::after(Duration::from_millis(delay.into())).await;
 }
 
 impl<B: ImuBus> Imu426xx<B> {
@@ -263,11 +265,11 @@ impl<B: ImuBus> Imu426xx<B> {
         self.write_register(Reg::BANK_SEL, 0).await?;
         self.write_register(Reg::PWR_MGMT0, PWR_OFF).await?;
         // Gyro requires minimum of 45m to complete startup.
-        delay_ms(50).await;
+        ImuCommon::delay_ms(50).await;
 
         // default reset configuration
         self.write_register(Reg::DEVICE_CONFIG, DEVICE_CONFIG_DEFAULT).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // Check WhoAmI
         let chip_id = self.read_register(Reg::WHO_AM_I).await?;
@@ -284,7 +286,7 @@ impl<B: ImuBus> Imu426xx<B> {
             }
             _ => return Err(ImuError::IncorrectWhoAmI),
         }
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // set anti alias filter, see pages 28ff of TDK ICM-42688-P Datasheet
         if self.config.device_id == WHO_AM_I_RESPONSE_ICM42688P {
@@ -346,16 +348,16 @@ impl<B: ImuBus> Imu426xx<B> {
         // Turn on gyro and acc on before configuring Output Data Rate(ODR) and Full Scale Rate (FSRP)
         self.write_register(Reg::PWR_MGMT0, PWR_TEMP_ENABLED | PWR_GYRO_LOW_NOISE | PWR_ACCEL_LOW_NOISE).await?;
         // Gyro requires minimum of 45m to complete startup.
-        delay_ms(50).await;
+        ImuCommon::delay_ms(50).await;
 
         let gyro_config0 = self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
 
         self.write_register(Reg::GYRO_CONFIG0, gyro_config0).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         let acc_config0 = self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
         self.write_register(Reg::ACCEL_CONFIG0, acc_config0).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))

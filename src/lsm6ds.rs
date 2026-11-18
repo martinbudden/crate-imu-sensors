@@ -1,4 +1,4 @@
-use embassy_time::{Duration, Timer};
+use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
@@ -174,23 +174,28 @@ impl<B: ImuBus> Imu for Lsm6ds<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::OUTX_L_ACC], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::OUTX_L_G], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let gyro = Vector3f32::from_le_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, gyro), timestamp))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 12];
         self.write_read(&[Reg::OUTX_L_G], &mut buf).await?;
+        let timestamp = Instant::now();
 
         let [g0, g1, g2, g3, g4, g5, a0, a1, a2, a3, a4, a5] = buf;
 
@@ -198,12 +203,9 @@ impl<B: ImuBus> Imu for Lsm6ds<B> {
         let gyro_buf = [g0, g1, g2, g3, g4, g5];
         let acc = Vector3f32::from_le_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
         let gyro = Vector3f32::from_le_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro))
+        let (acc, gyro) = ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro);
+        Ok((acc, gyro, timestamp))
     }
-}
-
-async fn delay_ms(delay: u32) {
-    Timer::after(Duration::from_millis(delay.into())).await;
 }
 
 impl<B: ImuBus> Lsm6ds<B> {
@@ -280,7 +282,7 @@ impl<B: ImuBus> Lsm6ds<B> {
         self.write_register(Reg::CTRL3_C, SW_RESET).await?;
         let mut reset_complete = false;
         for _ in 0..RESET_TIMEOUT_MS {
-            delay_ms(RESET_POLL_INTERVAL_MS).await;
+            ImuCommon::delay_ms(RESET_POLL_INTERVAL_MS).await;
             let ctrl3_c = self.read_register(Reg::CTRL3_C).await?;
             if ctrl3_c & SW_RESET == 0 {
                 reset_complete = true;
@@ -295,11 +297,11 @@ impl<B: ImuBus> Lsm6ds<B> {
 
         // Block Data Update and automatically increment registers when read via serial interface (I2C or SPI)
         self.write_register(Reg::CTRL3_C, BDU | IF_INC).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         let reg_ctrl2_g = self.calculate_gyro_scale_and_odr(gyro_sensitivity, gyro_units, target_output_data_rate_hz);
         self.write_register(Reg::CTRL2_G, reg_ctrl2_g).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         let reg_ctrl1_xl = self.calculate_acc_scale_and_odr(acc_sensitivity, acc_units, target_output_data_rate_hz);
         self.write_register(Reg::CTRL1_XL, reg_ctrl1_xl).await?;
@@ -308,7 +310,7 @@ impl<B: ImuBus> Lsm6ds<B> {
             // Set data ready pulsed
             const DATA_READY_PULSED: u8 = 0b_1000_0000;
             self.write_register(RegLsm6ds3trC::DRDY_PULSE_CFG_G, DATA_READY_PULSED).await?;
-            delay_ms(1).await;
+            ImuCommon::delay_ms(1).await;
         } else if chip_id == WHO_AM_I_RESPONSE_ISM330DHCX {
             const DATA_READY_PULSED: u8 = 0b_1000_0000;
 
@@ -326,11 +328,11 @@ impl<B: ImuBus> Lsm6ds<B> {
         // Interrupt pins are by default forced to ground, so active high
         // Enable data ready on INT1 pin
         self.write_register(Reg::INT1_CTRL, INT1_DRDY_G).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // Enable data ready on INT2 pin
         self.write_register(Reg::INT2_CTRL, INT2_DRDY_G).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // return the gyro and acc sample rates actually set
         Ok((self.common.gyro_sample_rate_hz, self.common.acc_sample_rate_hz))

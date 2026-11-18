@@ -1,4 +1,4 @@
-use embassy_time::{Duration, Timer};
+use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
@@ -127,23 +127,28 @@ impl<B: ImuBus> Imu for Mpu6050<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::ACCEL_XOUT_H], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let acc = Vector3f32::from_be_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, acc))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<Vector3f32, ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
+        let timestamp = Instant::now();
+
         let gyro = Vector3f32::from_be_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_vector(self.common.axis_order, gyro))
+        Ok((ImuAxisOrder::map_vector(self.common.axis_order, gyro), timestamp))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
         let mut buf = [0u8; 14];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
+        let timestamp = Instant::now();
 
         let [a0, a1, a2, a3, a4, a5, _t0, _t1, g0, g1, g2, g3, g4, g5] = buf;
 
@@ -151,12 +156,9 @@ impl<B: ImuBus> Imu for Mpu6050<B> {
         let gyro_buf = [g0, g1, g2, g3, g4, g5];
         let acc = Vector3f32::from_be_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
         let gyro = Vector3f32::from_be_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
-        Ok(ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro))
+        let (acc, gyro) = ImuAxisOrder::map_acc_gyro(self.common.axis_order, acc, gyro);
+        Ok((acc, gyro, timestamp))
     }
-}
-
-async fn delay_ms(delay: u32) {
-    Timer::after(Duration::from_millis(delay.into())).await;
 }
 
 impl<B: ImuBus> Mpu6050<B> {
@@ -208,9 +210,9 @@ impl<B: ImuBus> Mpu6050<B> {
     ) -> Result<(u32, u32), ImuError> {
         // clock source: PLL with Z axis gyro reference
         self.write_register(Reg::PWR_MGMT_1, CLKSEL_PLL_Z_AXIS_GYRO).await?;
-        delay_ms(15).await;
+        ImuCommon::delay_ms(15).await;
         self.write_register(Reg::PWR_MGMT_2, 0x00).await?;
-        delay_ms(15).await;
+        ImuCommon::delay_ms(15).await;
 
         // Check WhoAmI
         let chip_id = self.read_register(Reg::WHO_AM_I).await?;
@@ -226,9 +228,9 @@ impl<B: ImuBus> Mpu6050<B> {
                 INT_LEVEL_ACTIVE_HIGH | INT_PUSH_PULL | INT_ENABLE_PULSE | INT_CLEAR_READ_ANY | FSYNCH_INT_DISABLE,
             )
             .await?;
-        delay_ms(15).await;
+        ImuCommon::delay_ms(15).await;
         self.write_register(Reg::INT_ENABLE, DATA_READY_ENABLE).await?;
-        delay_ms(15).await;
+        ImuCommon::delay_ms(15).await;
 
         // TODO: write _gyro_sample_rate_divider to appropriate register.
         let _gyro_register_value =
