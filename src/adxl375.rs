@@ -1,11 +1,7 @@
-#![allow(unused)]
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::Instant;
 use vqm::Vector3f32;
 
-use super::{
-    AccDevice, AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon,
-    ImuDeviceConfig, ImuError,
-};
+use super::{AccDevice, AccSensitivity, AccUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDeviceConfig, ImuError};
 
 const I2C_ADDRESS: u8 = 0x3A;
 const I2C_ADDRESS_ALTERNATIVE: u8 = 0xA6;
@@ -16,34 +12,34 @@ struct Reg;
 impl Reg {
     // 0x01 to 0x1C 1 to 28 Reserved N/A N/A Reserved; do not access
     const DEVID: u8 = 0x00; // R 11100101 Device ID
-    const THRESH_SHOCK: u8 = 0x1D; // // R/W 00000000 Shock threshold
-    const OFSX: u8 = 0x1E; // R/W 00000000 X-axis offset
-    const OFSY: u8 = 0x1F; // R/W 00000000 Y-axis offset
-    const OFSZ: u8 = 0x20; // R/W 00000000 Z-axis offset
-    const DUR: u8 = 0x21; // R/W 00000000 Shock duration
-    const LATENT: u8 = 0x22; //  R/W 00000000 Shock latency
-    const WINDOW: u8 = 0x23; //  R/W 00000000 Shock window
-    const THRESH_ACT: u8 = 0x24; // R/W 00000000 Activity threshold
-    const THRESH_INACT: u8 = 0x25; // R/W 00000000 Inactivity threshold
-    const TIME_INACT: u8 = 0x26; // R/W 00000000 Inactivity time
-    const ACT_INACT_CTL: u8 = 0x27; // R/W 00000000 Axis enable control for activity and inactivity detection
-    const SHOCK_AXES: u8 = 0x2A; // R/W 00000000 Axis control for single shock/double shock
-    const ACT_SHOCK_STATUS: u8 = 0x2B; // R 00000000 Source of single shock/double shock
+    const _THRESH_SHOCK: u8 = 0x1D; // // R/W 00000000 Shock threshold
+    const _OFSX: u8 = 0x1E; // R/W 00000000 X-axis offset
+    const _OFSY: u8 = 0x1F; // R/W 00000000 Y-axis offset
+    const _OFSZ: u8 = 0x20; // R/W 00000000 Z-axis offset
+    const _DUR: u8 = 0x21; // R/W 00000000 Shock duration
+    const _LATENT: u8 = 0x22; //  R/W 00000000 Shock latency
+    const _WINDOW: u8 = 0x23; //  R/W 00000000 Shock window
+    const _THRESH_ACT: u8 = 0x24; // R/W 00000000 Activity threshold
+    const _THRESH_INACT: u8 = 0x25; // R/W 00000000 Inactivity threshold
+    const _TIME_INACT: u8 = 0x26; // R/W 00000000 Inactivity time
+    const _ACT_INACT_CTL: u8 = 0x27; // R/W 00000000 Axis enable control for activity and inactivity detection
+    const _SHOCK_AXES: u8 = 0x2A; // R/W 00000000 Axis control for single shock/double shock
+    const _ACT_SHOCK_STATUS: u8 = 0x2B; // R 00000000 Source of single shock/double shock
     const BW_RATE: u8 = 0x2C; // R/W 00001010 Data rate and power mode control
     const POWER_CTL: u8 = 0x2D; // R/W 00000000 Power saving features control
     const INT_ENABLE: u8 = 0x2E; // R/W 00000000 Interrupt enable control
     const INT_MAP: u8 = 0x2F; // R/W 00000000 Interrupt mapping control
-    const INT_SOURCE: u8 = 0x30; // R 00000010 Interrupt source
+    const _INT_SOURCE: u8 = 0x30; // R 00000010 Interrupt source
     // Interrupts are by default active high bit D5, inverts this.
-    const DATA_FORMAT: u8 = 0x31; // R/W 00000000 Data format control
+    const _DATA_FORMAT: u8 = 0x31; // R/W 00000000 Data format control
     const DATAX0: u8 = 0x32; // R 00000000 X-Axis Data 0
-    const DATAX1: u8 = 0x33; // R 00000000 X-Axis Data 1
-    const DATAY0: u8 = 0x34; // R 00000000 Y-Axis Data 0
-    const DATAY1: u8 = 0x35; // R 00000000 Y-Axis Data 1
-    const DATAZ0: u8 = 0x36; // R 00000000 Z-Axis Data 0
-    const DATAZ1: u8 = 0x37; // R 00000000 Z-Axis Data 1
-    const FIFO_CTL: u8 = 0x38; // R/W 00000000 FIFO control, default is FIFO is bypassed
-    const FIFO_STATUS: u8 = 0x39; // R 000
+    const _DATAX1: u8 = 0x33; // R 00000000 X-Axis Data 1
+    const _DATAY0: u8 = 0x34; // R 00000000 Y-Axis Data 0
+    const _DATAY1: u8 = 0x35; // R 00000000 Y-Axis Data 1
+    const _DATAZ0: u8 = 0x36; // R 00000000 Z-Axis Data 0
+    const _DATAZ1: u8 = 0x37; // R 00000000 Z-Axis Data 1
+    const _FIFO_CTL: u8 = 0x38; // R/W 00000000 FIFO control, default is FIFO is bypassed
+    const _FIFO_STATUS: u8 = 0x39; // R 000
 }
 
 const WHO_AM_I_RESPONSE_ADXL375: u8 = 0b_1110_0101; // 0xE5
@@ -113,10 +109,6 @@ impl<B: ImuBus> Imu for Adxl375<B> {
     }
 }
 
-async fn delay_ms(delay: u32) {
-    Timer::after(Duration::from_millis(delay.into())).await;
-}
-
 impl<B: ImuBus> Adxl375<B> {
     pub const MAX_SPI_FREQUENCY_HZ: u32 = 5_000_000;
     const DEVICE_ID: u8 = WHO_AM_I_RESPONSE_ADXL375;
@@ -161,28 +153,28 @@ impl<B: ImuBus> Adxl375<B> {
         if chip_id != WHO_AM_I_RESPONSE_ADXL375 {
             return Err(ImuError::IncorrectWhoAmI);
         }
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // Place in standby mode, need to do this before setting to measurement mode.
         self.write_register(Reg::POWER_CTL, 0).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
         // Set to measurement mode.
         self.write_register(Reg::POWER_CTL, 0b_0000_1000).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // Set to use INT1 pin.
         self.write_register(Reg::INT_MAP, 0b_0000_0000).await?;
 
         // Enable data ready interrupt.
         self.write_register(Reg::INT_ENABLE, 0b_1000_0000).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // const INT_SOURCE: u8 = 0x30; // R 00000010 Interrupt source
         // const DATA_FORMAT: u8 = 0x31; // R/W 00000000 Data format control
 
         let acc_register_value = self.calculate_acc_scale_and_odr(acc_units, target_output_data_rate_hz);
         self.write_register(Reg::BW_RATE, acc_register_value).await?;
-        delay_ms(1).await;
+        ImuCommon::delay_ms(1).await;
 
         // return the acc sample rate actually set
         Ok(self.common.acc_sample_rate_hz)
@@ -212,7 +204,7 @@ impl<B: ImuBus> Adxl375<B> {
             51..=100 => (100, ACC_ODR_100_HZ),
             26..=50 => (50, ACC_ODR_50_HZ),
             0..=25 => (25, ACC_ODR_25_HZ),
-            _ => (3200, ACC_ODR_1600_HZ),
+            _ => (3200, ACC_ODR_3200_HZ),
         };
         self.common.acc_sample_rate_hz = acc_sample_rate_hz;
 

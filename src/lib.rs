@@ -56,6 +56,7 @@ pub use imu_bus::{ImuBus, ImuError};
 pub use imu_bus_i2c::ImuI2cBus;
 pub use imu_bus_spi::ImuSpiBus;
 
+pub use adxl375::Adxl375;
 pub use bmi270::Bmi270;
 pub use icm20602::Icm20602;
 pub use imu426xx::Imu426xx;

@@ -1,4 +1,4 @@
-use super::{ImuAxisOrder, ImuBus, ImuError, ImuDeviceConfig};
+use super::{ImuAxisOrder, ImuBus, ImuDeviceConfig, ImuError};
 
 use embassy_time::{Duration, Instant, Timer};
 use vqm::Vector3f32;
