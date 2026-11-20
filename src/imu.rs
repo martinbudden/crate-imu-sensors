@@ -1,7 +1,9 @@
-use super::{ImuAxisOrder, ImuBus, ImuError, imu_device_config::ImuDeviceConfig};
+use super::{ImuAxisOrder, ImuBus, ImuError, ImuDeviceConfig};
 
 use embassy_time::{Duration, Instant, Timer};
 use vqm::Vector3f32;
+
+use cfg_if::cfg_if;
 
 /// Accelerometer scale factor.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -67,7 +69,7 @@ pub struct ImuCommon {
     pub acc_sample_rate_hz: u32,
     pub gyro_sample_rate_hz: u32,
 
-    pub axis_order: ImuAxisOrder,
+    axis_order: ImuAxisOrder,
 }
 
 #[allow(missing_docs)]
@@ -89,8 +91,58 @@ impl ImuCommon {
         }
     }
 
+    #[inline]
     pub async fn delay_ms(delay: u32) {
         Timer::after(Duration::from_millis(delay.into())).await;
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn axis_order(self) -> ImuAxisOrder {
+        self.axis_order
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn map_vector(self, v: Vector3f32) -> Vector3f32 {
+        cfg_if! {
+        if #[cfg(feature = "axis_xpos_ypos_zpos")] {
+            v
+        } else if #[cfg(feature = "axis_yneg_xpos_zpos")] {
+            Vector3f32 { x: -v.y,  y:  v.x,  z:  v.z }
+        } else if #[cfg(feature = "axis_ypos_xneg_zpos")] {
+            Vector3f32 { x:  v.y,  y: -v.x,  z:  v.z }
+        } else if #[cfg(feature = "axis_xneg_yneg_zpos")] {
+            Vector3f32 { x: -v.x,  y: -v.y,  z:  v.z }
+        } else if #[cfg(feature = "axis_xpos_zpos_yneg")] {
+            Vector3f32 { x:  v.x,  y:  v.z,  z: -v.y }
+        } else {
+        self.axis_order.map_vector(v)
+        }}
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn map_acc_gyro(self, acc: Vector3f32, gyro: Vector3f32) -> (Vector3f32, Vector3f32) {
+        // use a feature flag to hardcode the mapping, so that the match statement can be bypassed for optimal performance.
+        cfg_if! {
+        if #[cfg(feature = "axis_xpos_ypos_zpos")] {
+            (acc, gyro)
+        } else if #[cfg(feature = "axis_yneg_xpos_zpos")] {
+            (Vector3f32 { x:-acc.y,  y: acc.x,  z: acc.z },
+             Vector3f32 { x:-gyro.y, y: gyro.x, z: gyro.z })
+        } else if #[cfg(feature = "axis_ypos_xneg_zpos")] {
+            (Vector3f32 { x: acc.y,  y: -acc.x,  z: acc.z },
+             Vector3f32 { x: gyro.y, y: -gyro.x, z: gyro.z })
+        } else if #[cfg(feature = "axis_xneg_yneg_zpos")] {
+            (Vector3f32 { x:-acc.x,  y: -acc.y,  z: acc.z },
+             Vector3f32 { x:-gyro.x, y: -gyro.y, z: gyro.z })
+        } else if #[cfg(feature = "axis_xpos_zpos_yneg")] {
+            (Vector3f32 { x: acc.x,  y: acc.z,  z: -acc.y },
+             Vector3f32 { x: gyro.x, y: gyro.z, z: -gyro.y })
+        } else {
+            self.axis_order.map_acc_gyro(acc, gyro)
+        }}
     }
 }
 

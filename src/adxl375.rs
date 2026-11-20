@@ -99,7 +99,7 @@ impl<B: ImuBus> Imu for Adxl375<B> {
         let timestamp = Instant::now();
 
         let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
-        Ok((ImuAxisOrder::map_vector(self.common.axis_order, acc), timestamp))
+        Ok((self.common.map_vector(acc), timestamp))
     }
 
     async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
