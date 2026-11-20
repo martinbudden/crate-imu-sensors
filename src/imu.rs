@@ -1,4 +1,4 @@
-use super::{ImuAxisOrder, ImuBus, ImuDeviceConfig, ImuError};
+use super::{AxisOrder, ImuBus, ImuDeviceConfig, ImuError};
 
 use embassy_time::{Duration, Instant, Timer};
 use vqm::Vector3f32;
@@ -69,7 +69,7 @@ pub struct ImuCommon {
     pub acc_sample_rate_hz: u32,
     pub gyro_sample_rate_hz: u32,
 
-    axis_order: ImuAxisOrder,
+    axis_order: AxisOrder,
 }
 
 #[allow(missing_docs)]
@@ -77,7 +77,7 @@ impl ImuCommon {
     pub const G0: f32 = 9.806_65;
 
     #[must_use]
-    pub const fn new(axis_order: ImuAxisOrder) -> Self {
+    pub const fn new(axis_order: AxisOrder) -> Self {
         const GYRO_2000DPS_RES: f32 = 2000.0 / 32768.0;
         const ACC_8G_RES: f32 = 8.0 / 32768.0;
         Self {
@@ -98,7 +98,7 @@ impl ImuCommon {
 
     #[inline]
     #[must_use]
-    pub fn axis_order(self) -> ImuAxisOrder {
+    pub fn axis_order(self) -> AxisOrder {
         self.axis_order
     }
 
@@ -148,7 +148,7 @@ impl ImuCommon {
 
 impl Default for ImuCommon {
     fn default() -> Self {
-        Self::new(ImuAxisOrder::XPOS_YPOS_ZPOS)
+        Self::new(AxisOrder::XPOS_YPOS_ZPOS)
     }
 }
 

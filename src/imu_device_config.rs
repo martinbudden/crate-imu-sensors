@@ -1,4 +1,4 @@
-use super::ImuAxisOrder;
+use super::AxisOrder;
 
 #[cfg(feature = "storage")]
 use sequential_storage::map::PostcardValue;
@@ -17,7 +17,7 @@ pub struct ImuDeviceConfig {
     /// 8-bit id assigned by IMU manufacturer.
     pub device_id: u8,
     pub address: u8,
-    pub axis_order: ImuAxisOrder,
+    pub axis_order: AxisOrder,
     /// Flags for describing IMU characteristics.
     pub flags: u8,
 }
@@ -107,12 +107,12 @@ impl ImuDeviceConfig {
             acc_id_msp: 0,
             device_id: 0,
             address: 0,
-            axis_order: ImuAxisOrder::XPOS_YPOS_ZPOS,
+            axis_order: AxisOrder::XPOS_YPOS_ZPOS,
             flags: 0,
         }
     }
     #[must_use]
-    pub const fn from_axis_order(axis_order: ImuAxisOrder) -> Self {
+    pub const fn from_axis_order(axis_order: AxisOrder) -> Self {
         Self { gyro_id_msp: 0, acc_id_msp: 0, device_id: 0, address: 0, axis_order, flags: 0 }
     }
 }

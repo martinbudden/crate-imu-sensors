@@ -14,7 +14,7 @@ use {
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-pub enum ImuAxisOrder {
+pub enum AxisOrder {
     #[default]
     XPOS_YPOS_ZPOS = 0,
     YPOS_XNEG_ZPOS = 1, // rotate  90 degrees anticlockwise
@@ -56,9 +56,9 @@ pub enum ImuAxisOrder {
 }
 
 #[cfg(feature = "storage")]
-impl PostcardValue<'_> for ImuAxisOrder {}
+impl PostcardValue<'_> for AxisOrder {}
 
-impl ImuAxisOrder {
+impl AxisOrder {
     pub const COUNT: u8 = 28;
 
     /// Forgiving conversion from u8 to `ImuAxisOrder`, converts invalid values to default.
@@ -103,7 +103,7 @@ impl ImuAxisOrder {
     }
 }
 
-impl ImuAxisOrder {
+impl AxisOrder {
     // #[rustfmt::skip]
     #[inline]
     #[must_use]
@@ -286,7 +286,7 @@ impl ImuAxisOrder {
     }
 }
 
-impl TryFrom<u8> for ImuAxisOrder {
+impl TryFrom<u8> for AxisOrder {
     type Error = ();
 
     /// Validating conversion, invalid values return error.
@@ -320,11 +320,11 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<ImuAxisOrder>();
+        is_full::<AxisOrder>();
         #[cfg(feature = "serde")]
-        is_serde::<ImuAxisOrder>();
+        is_serde::<AxisOrder>();
         #[cfg(feature = "storage")]
-        is_storage::<ImuAxisOrder>();
+        is_storage::<AxisOrder>();
     }
 }
 
@@ -342,21 +342,21 @@ mod tests {
     #[test]
     fn map_vector() {
         const INPUT: Vector3f32 = Vector3f32 { x: 2.0, y: 3.0, z: 5.0 };
-        let output = ImuAxisOrder::map_vector(ImuAxisOrder::XPOS_YPOS_ZPOS, INPUT);
+        let output = AxisOrder::map_vector(AxisOrder::XPOS_YPOS_ZPOS, INPUT);
         assert_eq!(Vector3f32 { x: 2.0, y: 3.0, z: 5.0 }, output);
-        let output = ImuAxisOrder::map_vector(ImuAxisOrder::YPOS_XNEG_ZPOS, INPUT);
+        let output = AxisOrder::map_vector(AxisOrder::YPOS_XNEG_ZPOS, INPUT);
         assert_eq!(Vector3f32 { x: 3.0, y: -2.0, z: 5.0 }, output);
     }
     #[test]
     fn axis_order_inverse() {
-        let input = ImuAxisOrder::XPOS_YPOS_ZPOS;
-        let output = ImuAxisOrder::axis_order_inverse(input);
-        let output_inverse = ImuAxisOrder::axis_order_inverse(output);
+        let input = AxisOrder::XPOS_YPOS_ZPOS;
+        let output = AxisOrder::axis_order_inverse(input);
+        let output_inverse = AxisOrder::axis_order_inverse(output);
         assert_eq!(input, output_inverse);
-        for ii in 0..ImuAxisOrder::COUNT {
-            let axis_order = ImuAxisOrder::from_u8(ii);
-            let output = ImuAxisOrder::axis_order_inverse(axis_order);
-            let output_inverse = ImuAxisOrder::axis_order_inverse(output);
+        for ii in 0..AxisOrder::COUNT {
+            let axis_order = AxisOrder::from_u8(ii);
+            let output = AxisOrder::axis_order_inverse(axis_order);
+            let output_inverse = AxisOrder::axis_order_inverse(output);
             assert_eq!(axis_order, output_inverse);
         }
     }

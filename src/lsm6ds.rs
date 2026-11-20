@@ -2,7 +2,7 @@ use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
-    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
     ImuDeviceConfig, ImuError,
 };
 
@@ -212,7 +212,7 @@ impl<B: ImuBus> Lsm6ds<B> {
     const DEVICE_ID_UNSET: u8 = 0;
 
     /// Constructor.
-    pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
+    pub fn new(bus: B, axis_order: AxisOrder) -> Self {
         Self {
             bus,
             common: ImuCommon::new(axis_order),
@@ -450,7 +450,7 @@ impl<B: ImuBus> Lsm6ds<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ImuAxisOrder, MockImuBus};
+    use crate::{AxisOrder, MockImuBus};
 
     #[test]
     fn imu_init() {
@@ -461,7 +461,7 @@ mod tests {
         assert_eq!(4, imu_bus.registers[Reg::CTRL3_C as usize]);
         assert_eq!(WHO_AM_I, imu_bus.registers[Reg::WHO_AM_I as usize]);
 
-        let mut imu: Lsm6ds<MockImuBus> = Lsm6ds::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: Lsm6ds<MockImuBus> = Lsm6ds::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let result = pollster::block_on(imu.read_register(Reg::WHO_AM_I));
         assert_eq!(Ok(WHO_AM_I), result);
@@ -505,7 +505,7 @@ mod tests {
 
         for (sensitivity, expected_scale, expected_range) in cases {
             let bus = MockImuBus::new();
-            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+            let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
             let reg = imu.calculate_acc_scale_and_odr(sensitivity, AccUnits::G, 8000);
             assert_eq!(reg & 0x0C, expected_range);
@@ -522,7 +522,7 @@ mod tests {
     #[test]
     fn test_acc_sensitivity_mps2() {
         let bus = MockImuBus::new();
-        let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         _ = imu.calculate_acc_scale_and_odr(AccSensitivity::Scale16G, AccUnits::Mps2, 104);
         let expected = 0.000_488 * ImuCommon::G0;
@@ -541,7 +541,7 @@ mod tests {
 
         for (sensitivity, expected_scale, expected_range) in cases {
             let bus = MockImuBus::new();
-            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+            let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
             let reg = imu.calculate_gyro_scale_and_odr(sensitivity, GyroUnits::Dps, 8000);
             assert_eq!(reg & 0x0F, expected_range);
@@ -558,7 +558,7 @@ mod tests {
     #[test]
     fn test_gyro_sensitivity_radians() {
         let bus = MockImuBus::new();
-        let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         _ = imu.calculate_gyro_scale_and_odr(GyroSensitivity::Scale2000Dps, GyroUnits::Rps, 104);
         let expected = 0.070_f32.to_radians();
@@ -596,7 +596,7 @@ mod tests {
 
         for (requested, expected_rate, expected_register) in cases {
             let bus = MockImuBus::new();
-            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+            let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
             let reg = imu.calculate_acc_scale_and_odr(AccSensitivity::Scale2G, AccUnits::G, requested);
             assert_eq!(reg & 0xF0, expected_register, "Wrong register for requested ODR {}", requested,);
@@ -636,7 +636,7 @@ mod tests {
 
         for (requested, expected_rate, expected_register) in cases {
             let bus = MockImuBus::new();
-            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+            let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
             let reg = imu.calculate_gyro_scale_and_odr(GyroSensitivity::Scale125Dps, GyroUnits::Dps, requested);
             assert_eq!(reg & 0xF0, expected_register);
@@ -666,7 +666,7 @@ mod tests {
         for (device_id, expected_gyro_id, expected_acc_id) in cases {
             let bus = MockImuBus::new().with_register(Reg::WHO_AM_I, device_id);
 
-            let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+            let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
             // This test assumes the mock clears SW_RESET when CTRL3_C
             // is written with SW_RESET. See the mock enhancement below.
@@ -689,7 +689,7 @@ mod tests {
     fn test_incorrect_who_am_i() {
         let bus = MockImuBus::new().with_register(Reg::WHO_AM_I, 0xFF);
 
-        let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let result = pollster::block_on(imu.init(
             104,
@@ -705,7 +705,7 @@ mod tests {
     fn test_init_register_configuration() {
         let bus = MockImuBus::new().with_register(Reg::WHO_AM_I, WHO_AM_I_RESPONSE_LSM6DS3TR_C);
 
-        let mut imu = Lsm6ds::new(bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let result = pollster::block_on(imu.init(
             104,

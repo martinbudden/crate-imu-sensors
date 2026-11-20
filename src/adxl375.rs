@@ -1,7 +1,7 @@
 use embassy_time::Instant;
 use vqm::Vector3f32;
 
-use super::{AccDevice, AccSensitivity, AccUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDeviceConfig, ImuError};
+use super::{AccDevice, AccSensitivity, AccUnits, AxisOrder, Imu, ImuBus, ImuCommon, ImuDeviceConfig, ImuError};
 
 const I2C_ADDRESS: u8 = 0x3A;
 const I2C_ADDRESS_ALTERNATIVE: u8 = 0xA6;
@@ -114,7 +114,7 @@ impl<B: ImuBus> Adxl375<B> {
     const DEVICE_ID: u8 = WHO_AM_I_RESPONSE_ADXL375;
 
     /// Constructor.
-    pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
+    pub fn new(bus: B, axis_order: AxisOrder) -> Self {
         Self {
             bus,
             common: ImuCommon::new(axis_order),
@@ -216,7 +216,7 @@ impl<B: ImuBus> Adxl375<B> {
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
     use super::*;
-    use crate::{ImuAxisOrder, MockImuBus};
+    use crate::{AxisOrder, MockImuBus};
 
     #[test]
     fn imu_init() {

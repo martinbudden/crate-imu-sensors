@@ -24,7 +24,7 @@
 
 mod acc_device;
 mod adxl375;
-mod axis;
+mod axis_order;
 mod bmi270;
 mod icm20602;
 mod imu;
@@ -41,7 +41,7 @@ mod mpu6050;
 mod mpu6886;
 mod qmi8658a;
 
-pub use axis::ImuAxisOrder;
+pub use axis_order::AxisOrder;
 
 pub use imu::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuCommon};
 

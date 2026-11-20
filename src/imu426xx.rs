@@ -2,7 +2,7 @@ use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
-    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
     ImuDeviceConfig, ImuError,
 };
 
@@ -217,7 +217,7 @@ impl<B: ImuBus> Imu426xx<B> {
     const DEVICE_ID: u8 = WHO_AM_I_RESPONSE_ICM42605;
 
     /// Constructor.
-    pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
+    pub fn new(bus: B, axis_order: AxisOrder) -> Self {
         Self {
             bus,
             common: ImuCommon::new(axis_order),
@@ -493,13 +493,13 @@ mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
     #![allow(clippy::float_cmp)]
     use super::*;
-    use crate::{ImuAxisOrder, MockImuBus};
+    use crate::{AxisOrder, MockImuBus};
 
     #[test]
     fn imu_init() {
         let imu_bus = MockImuBus::new().with_register(Reg::WHO_AM_I, Imu426xx::<MockImuBus>::DEVICE_ID);
 
-        let mut imu: Imu426xx<MockImuBus> = Imu426xx::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: Imu426xx<MockImuBus> = Imu426xx::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
             pollster::block_on(imu.init(8000, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));

@@ -2,7 +2,7 @@ use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
-    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
     ImuDeviceConfig, ImuError,
 };
 
@@ -281,7 +281,7 @@ impl<B: ImuBus> Bmi270<B> {
     const DEVICE_ID: u8 = 0x24;
 
     /// Constructor.
-    pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
+    pub fn new(bus: B, axis_order: AxisOrder) -> Self {
         Self {
             bus,
             common: ImuCommon::new(axis_order),
@@ -1008,7 +1008,7 @@ mod tests {
     #![allow(clippy::float_cmp)]
 
     use super::*;
-    use crate::{ImuAxisOrder, MockImuBus};
+    use crate::{AxisOrder, MockImuBus};
 
     #[test]
     fn imu_init() {
@@ -1019,7 +1019,7 @@ mod tests {
             .with_register(Reg::CMD + 1, 0xB6)
             .with_register(Reg::INTERNAL_STATUS, Bmi270InitializationStates::Ok as u8);
 
-        let mut imu: Bmi270<MockImuBus> = Bmi270::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: Bmi270<MockImuBus> = Bmi270::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let result = pollster::block_on(imu_bus.read_register(0, Reg::CHIP_ID));
         assert_eq!(Ok(Bmi270::<MockImuBus>::DEVICE_ID), result);

@@ -2,7 +2,7 @@ use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
-    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
     ImuDeviceConfig, ImuError,
 };
 
@@ -171,7 +171,7 @@ impl<B: ImuBus> Icm20602<B> {
     const DEVICE_ID: u8 = 0x12;
 
     /// Constructor.
-    pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
+    pub fn new(bus: B, axis_order: AxisOrder) -> Self {
         Self {
             bus,
             common: ImuCommon::new(axis_order),
@@ -356,7 +356,7 @@ mod tests {
     #![allow(clippy::float_cmp)]
 
     use super::*;
-    use crate::{ImuAxisOrder, MockImuBus};
+    use crate::{AxisOrder, MockImuBus};
 
     #[test]
     fn imu_init() {
@@ -365,7 +365,7 @@ mod tests {
             .with_register(Reg::ACCEL_XOUT_H, 4);
         assert_eq!(4, imu_bus.registers[Reg::ACCEL_XOUT_H as usize]);
 
-        let mut imu: Icm20602<MockImuBus> = Icm20602::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: Icm20602<MockImuBus> = Icm20602::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
             pollster::block_on(imu.init(8000, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));

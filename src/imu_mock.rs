@@ -2,7 +2,7 @@ use embassy_time::Instant;
 use vqm::Vector3f32;
 
 use super::{
-    AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuAxisOrder, ImuBus, ImuCommon, ImuDevice,
+    AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
     ImuDeviceConfig, ImuError,
 };
 
@@ -103,7 +103,7 @@ impl<B: ImuBus> Imu for ImuMock<B> {
 
 impl<B: ImuBus> ImuMock<B> {
     /// Constructor.
-    pub fn new(bus: B, axis_order: ImuAxisOrder) -> Self {
+    pub fn new(bus: B, axis_order: AxisOrder) -> Self {
         Self {
             bus,
             common: ImuCommon::new(axis_order),
@@ -208,12 +208,12 @@ mod tests {
     #![allow(clippy::float_cmp)]
 
     use super::*;
-    use crate::{ImuAxisOrder, MockImuBus};
+    use crate::{AxisOrder, MockImuBus};
 
     #[test]
     fn imu_init() {
         let imu_bus = MockImuBus::new();
-        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let result =
             pollster::block_on(imu.init(8000, GyroSensitivity::Max, GyroUnits::Dps, AccSensitivity::Max, AccUnits::G));
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn acc_buf() {
         let imu_bus = MockImuBus::new();
-        let imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         // TODO: sit down and work out some useful test data for this
         let data: [u8; 6] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn gyro_buf() {
         let imu_bus = MockImuBus::new();
-        let imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         // TODO: sit down and work out some useful test data for this
         let data: [u8; 6] = [0x10, 0x00, 0x00, 0x01, 0x00, 0x7f];
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn scale_acc() {
         let imu_bus = MockImuBus::new();
-        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let acc_scale = imu.acc_scale() * 32768.0;
         assert_eq!(8.0, acc_scale);
@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn read_acc() {
         let imu_bus = MockImuBus::new();
-        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
 
         let acc = Vector3f32::new(0.5, 2.0, 1.0);
         pollster::block_on(imu.set_acc(acc));
@@ -286,7 +286,7 @@ mod tests {
     #[test]
     fn scale_gyro() {
         let imu_bus = MockImuBus::new();
-        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
         let gyro_scale = imu.gyro_scale() * 32768.0;
         assert_eq!(2000.0, gyro_scale);
 
@@ -323,7 +323,7 @@ mod tests {
     #[test]
     fn read_gyro() {
         let imu_bus = MockImuBus::new();
-        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, ImuAxisOrder::XPOS_YPOS_ZPOS);
+        let mut imu: ImuMock<MockImuBus> = ImuMock::new(imu_bus, AxisOrder::XPOS_YPOS_ZPOS);
         let gyro_scale = imu.gyro_scale() * 32768.0;
         assert_eq!(2000.0, gyro_scale);
 
