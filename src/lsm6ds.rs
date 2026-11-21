@@ -468,12 +468,12 @@ mod tests {
 
         let reg = imu.calculate_acc_scale_and_odr(AccSensitivity::Max, AccUnits::Mps2, 8000);
         assert_eq!(reg, 0xA4);
-        assert!((imu.common.acc_scale - 0.0047856453).abs() < 1e-6);
+        assert!((imu.common.acc_scale - 0.004_785_645_3).abs() < 1e-6);
         assert_eq!(imu.common.acc_sample_rate_hz, 6664);
 
         let reg = imu.calculate_gyro_scale_and_odr(GyroSensitivity::Max, GyroUnits::Rps, 8000);
         assert_eq!(reg, 0xAC);
-        assert!((imu.common.gyro_scale - 0.0012217305).abs() < 1e-6);
+        assert!((imu.common.gyro_scale - 0.001_221_730_5).abs() < 1e-6);
         assert_eq!(imu.common.gyro_sample_rate_hz, 6664);
 
         let result =
@@ -489,7 +489,7 @@ mod tests {
         assert_eq!(Ok(DATA_READY_PULSED), reg);
 
         assert!((0.07 - imu.common.gyro_scale) < 1e-6);
-        assert!((0.000244 - imu.common.acc_scale) < 1e-6);
+        assert!((0.000_244 - imu.common.acc_scale) < 1e-6);
         assert_eq!(6664, imu.common.gyro_sample_rate_hz);
         assert_eq!(6664, imu.common.acc_sample_rate_hz);
     }
@@ -526,7 +526,7 @@ mod tests {
 
         _ = imu.calculate_acc_scale_and_odr(AccSensitivity::Scale16G, AccUnits::Mps2, 104);
         let expected = 0.000_488 * ImuCommon::G0;
-        assert!((imu.common.acc_scale - expected).abs() < 1e-7, "Expected {}, got {}", expected, imu.common.acc_scale,);
+        assert!((imu.common.acc_scale - expected).abs() < 1e-7, "Expected {}, got {}", expected, imu.common.acc_scale);
     }
 
     #[test]
@@ -599,11 +599,10 @@ mod tests {
             let mut imu = Lsm6ds::new(bus, AxisOrder::XPOS_YPOS_ZPOS);
 
             let reg = imu.calculate_acc_scale_and_odr(AccSensitivity::Scale2G, AccUnits::G, requested);
-            assert_eq!(reg & 0xF0, expected_register, "Wrong register for requested ODR {}", requested,);
+            assert_eq!(reg & 0xF0, expected_register, "Wrong register for requested ODR {requested}");
             assert_eq!(
                 imu.common.acc_sample_rate_hz, expected_rate,
-                "Wrong reported ODR for requested ODR {}",
-                requested,
+                "Wrong reported ODR for requested ODR {requested}",
             );
         }
     }
@@ -642,8 +641,7 @@ mod tests {
             assert_eq!(reg & 0xF0, expected_register);
             assert_eq!(
                 imu.common.gyro_sample_rate_hz, expected_rate,
-                "Wrong reported ODR for requested ODR {}",
-                requested,
+                "Wrong reported ODR for requested ODR {requested}"
             );
         }
     }

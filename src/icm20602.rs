@@ -374,7 +374,7 @@ mod tests {
             assert_eq!(8000, gyro_sample_rate_hz);
             assert_eq!(8000, acc_sample_rate_hz);
 
-            assert_eq!(0.06097561, imu.common.gyro_scale);
+            assert_eq!(0.060_975_61, imu.common.gyro_scale);
             assert_eq!(16.0 / 32768.0, imu.common.acc_scale);
             assert_eq!(8000, imu.common.gyro_sample_rate_hz);
             assert_eq!(8000, imu.common.acc_sample_rate_hz);

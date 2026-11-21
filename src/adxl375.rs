@@ -216,11 +216,11 @@ impl<B: ImuBus> Adxl375<B> {
 mod tests {
     // we can do float comparisons because all floats have been converted from i16s, and so can be represented exactly.
     use super::*;
-    use crate::{AxisOrder, MockImuBus};
+    use crate::MockImuBus;
 
     #[test]
     fn imu_init() {
-        let mut imu_bus = MockImuBus::new().with_register(Reg::DEVID, Adxl375::<MockImuBus>::DEVICE_ID);
+        let imu_bus = MockImuBus::new().with_register(Reg::DEVID, Adxl375::<MockImuBus>::DEVICE_ID);
         assert_eq!(Adxl375::<MockImuBus>::DEVICE_ID, imu_bus.registers[Reg::DEVID as usize]);
     }
 }
