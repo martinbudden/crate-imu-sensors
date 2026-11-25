@@ -106,6 +106,7 @@
         "msrv",
         "msvc",
         "multicore",
+        "nalgebra",
         "nmagic",
         "nonsecure",
         "normpath",
