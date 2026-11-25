@@ -119,41 +119,33 @@ impl AxisOrder {
 
         match self {
             Self::XPOS_YPOS_ZPOS => v,
-            Self::YPOS_XNEG_ZPOS => Vector3f32 { x: v.y, y: -v.x, z: v.z },
-            Self::XNEG_YNEG_ZPOS => Vector3f32 { x: -v.x, y: -v.y, z: v.z },
-            Self::YNEG_XPOS_ZPOS => Vector3f32 { x: -v.y, y: v.x, z: v.z },
-            Self::XPOS_YNEG_ZNEG => Vector3f32 { x: v.x, y: -v.y, z: -v.z },
-            Self::YPOS_XPOS_ZNEG => Vector3f32 { x: v.y, y: v.x, z: -v.z },
-            Self::XNEG_YPOS_ZNEG => Vector3f32 { x: -v.x, y: v.y, z: -v.z },
-            Self::YNEG_XNEG_ZNEG => Vector3f32 { x: -v.y, y: -v.x, z: -v.z },
-            Self::ZPOS_YNEG_XPOS => Vector3f32 { x: v.z, y: -v.y, z: v.x },
-            Self::YPOS_ZPOS_XPOS => Vector3f32 { x: v.y, y: v.z, z: v.x },
-            Self::ZNEG_YPOS_XPOS => Vector3f32 { x: -v.z, y: v.y, z: v.x },
-            Self::YNEG_ZNEG_XPOS => Vector3f32 { x: -v.y, y: -v.z, z: v.x },
-            Self::ZPOS_YPOS_XNEG => Vector3f32 { x: v.z, y: v.y, z: -v.x },
-            Self::YPOS_ZNEG_XNEG => Vector3f32 { x: v.y, y: -v.z, z: -v.x },
-            Self::ZNEG_YNEG_XNEG => Vector3f32 { x: -v.z, y: -v.y, z: -v.x },
-            Self::YNEG_ZPOS_XNEG => Vector3f32 { x: -v.y, y: v.z, z: -v.x },
-            Self::ZPOS_XPOS_YPOS => Vector3f32 { x: v.z, y: v.x, z: v.y },
-            Self::XNEG_ZPOS_YPOS => Vector3f32 { x: -v.x, y: v.z, z: v.y },
-            Self::ZNEG_XNEG_YPOS => Vector3f32 { x: -v.z, y: -v.x, z: v.y },
-            Self::XPOS_ZNEG_YPOS => Vector3f32 { x: v.x, y: -v.z, z: v.y },
-            Self::ZPOS_XNEG_YNEG => Vector3f32 { x: v.z, y: -v.x, z: -v.y },
-            Self::XNEG_ZNEG_YNEG => Vector3f32 { x: -v.x, y: -v.z, z: -v.y },
-            Self::ZNEG_XPOS_YNEG => Vector3f32 { x: -v.z, y: v.x, z: -v.y },
-            Self::XPOS_ZPOS_YNEG => Vector3f32 { x: v.x, y: v.z, z: -v.y },
-            Self::XPOS_YPOS_ZPOS_45 => {
-                Vector3f32 { x: v.x * COS45 + v.y * SIN45, y: -v.x * SIN45 + v.y * COS45, z: v.z }
-            }
-            Self::YPOS_XNEG_ZPOS_45 => {
-                Vector3f32 { x: v.x * COS135 + v.y * SIN135, y: -v.x * SIN135 + v.y * COS135, z: v.z }
-            }
-            Self::XNEG_YNEG_ZPOS_45 => {
-                Vector3f32 { x: v.x * COS225 + v.y * SIN225, y: -v.x * SIN225 + v.y * COS225, z: v.z }
-            }
-            Self::YNEG_XPOS_ZPOS_45 => {
-                Vector3f32 { x: v.x * COS315 + v.y * SIN315, y: -v.x * SIN315 + v.y * COS315, z: v.z }
-            }
+            Self::YPOS_XNEG_ZPOS => Vector3f32::new(v.y, -v.x, v.z),
+            Self::XNEG_YNEG_ZPOS => Vector3f32::new(-v.x, -v.y, v.z),
+            Self::YNEG_XPOS_ZPOS => Vector3f32::new(-v.y, v.x, v.z),
+            Self::XPOS_YNEG_ZNEG => Vector3f32::new(v.x, -v.y, -v.z),
+            Self::YPOS_XPOS_ZNEG => Vector3f32::new(v.y, v.x, -v.z),
+            Self::XNEG_YPOS_ZNEG => Vector3f32::new(-v.x, v.y, -v.z),
+            Self::YNEG_XNEG_ZNEG => Vector3f32::new(-v.y, -v.x, -v.z),
+            Self::ZPOS_YNEG_XPOS => Vector3f32::new(v.z, -v.y, v.x),
+            Self::YPOS_ZPOS_XPOS => Vector3f32::new(v.y, v.z, v.x),
+            Self::ZNEG_YPOS_XPOS => Vector3f32::new(-v.z, v.y, v.x),
+            Self::YNEG_ZNEG_XPOS => Vector3f32::new(-v.y, -v.z, v.x),
+            Self::ZPOS_YPOS_XNEG => Vector3f32::new(v.z, v.y, -v.x),
+            Self::YPOS_ZNEG_XNEG => Vector3f32::new(v.y, -v.z, -v.x),
+            Self::ZNEG_YNEG_XNEG => Vector3f32::new(-v.z, -v.y, -v.x),
+            Self::YNEG_ZPOS_XNEG => Vector3f32::new(-v.y, v.z, -v.x),
+            Self::ZPOS_XPOS_YPOS => Vector3f32::new(v.z, v.x, v.y),
+            Self::XNEG_ZPOS_YPOS => Vector3f32::new(-v.x, v.z, v.y),
+            Self::ZNEG_XNEG_YPOS => Vector3f32::new(-v.z, -v.x, v.y),
+            Self::XPOS_ZNEG_YPOS => Vector3f32::new(v.x, -v.z, v.y),
+            Self::ZPOS_XNEG_YNEG => Vector3f32::new(v.z, -v.x, -v.y),
+            Self::XNEG_ZNEG_YNEG => Vector3f32::new(-v.x, -v.z, -v.y),
+            Self::ZNEG_XPOS_YNEG => Vector3f32::new(-v.z, v.x, -v.y),
+            Self::XPOS_ZPOS_YNEG => Vector3f32::new(v.x, v.z, -v.y),
+            Self::XPOS_YPOS_ZPOS_45 => Vector3f32::new(v.x * COS45 + v.y * SIN45, -v.x * SIN45 + v.y * COS45, v.z),
+            Self::YPOS_XNEG_ZPOS_45 => Vector3f32::new(v.x * COS135 + v.y * SIN135, -v.x * SIN135 + v.y * COS135, v.z),
+            Self::XNEG_YNEG_ZPOS_45 => Vector3f32::new(v.x * COS225 + v.y * SIN225, -v.x * SIN225 + v.y * COS225, v.z),
+            Self::YNEG_XPOS_ZPOS_45 => Vector3f32::new(v.x * COS315 + v.y * SIN315, -v.x * SIN315 + v.y * COS315, v.z),
         }
     }
 
@@ -171,90 +163,50 @@ impl AxisOrder {
 
         match self {
             Self::XPOS_YPOS_ZPOS => (acc, gyro),
-            Self::YPOS_XNEG_ZPOS => {
-                (Vector3f32 { x: acc.y, y: -acc.x, z: acc.z }, Vector3f32 { x: gyro.y, y: -gyro.x, z: gyro.z })
-            }
-            Self::XNEG_YNEG_ZPOS => {
-                (Vector3f32 { x: -acc.x, y: -acc.y, z: acc.z }, Vector3f32 { x: -gyro.x, y: -gyro.y, z: gyro.z })
-            }
-            Self::YNEG_XPOS_ZPOS => {
-                (Vector3f32 { x: -acc.y, y: acc.x, z: acc.z }, Vector3f32 { x: -gyro.y, y: gyro.x, z: gyro.z })
-            }
-            Self::XPOS_YNEG_ZNEG => {
-                (Vector3f32 { x: acc.x, y: -acc.y, z: -acc.z }, Vector3f32 { x: gyro.x, y: -gyro.y, z: -gyro.z })
-            }
-            Self::YPOS_XPOS_ZNEG => {
-                (Vector3f32 { x: acc.y, y: acc.x, z: -acc.z }, Vector3f32 { x: gyro.y, y: gyro.x, z: -gyro.z })
-            }
-            Self::XNEG_YPOS_ZNEG => {
-                (Vector3f32 { x: -acc.x, y: acc.y, z: -acc.z }, Vector3f32 { x: -gyro.x, y: gyro.y, z: -gyro.z })
-            }
+            Self::YPOS_XNEG_ZPOS => (Vector3f32::new(acc.y, -acc.x, acc.z), Vector3f32::new(gyro.y, -gyro.x, gyro.z)),
+            Self::XNEG_YNEG_ZPOS => (Vector3f32::new(-acc.x, -acc.y, acc.z), Vector3f32::new(-gyro.x, -gyro.y, gyro.z)),
+            Self::YNEG_XPOS_ZPOS => (Vector3f32::new(-acc.y, acc.x, acc.z), Vector3f32::new(-gyro.y, gyro.x, gyro.z)),
+            Self::XPOS_YNEG_ZNEG => (Vector3f32::new(acc.x, -acc.y, -acc.z), Vector3f32::new(gyro.x, -gyro.y, -gyro.z)),
+            Self::YPOS_XPOS_ZNEG => (Vector3f32::new(acc.y, acc.x, -acc.z), Vector3f32::new(gyro.y, gyro.x, -gyro.z)),
+            Self::XNEG_YPOS_ZNEG => (Vector3f32::new(-acc.x, acc.y, -acc.z), Vector3f32::new(-gyro.x, gyro.y, -gyro.z)),
             Self::YNEG_XNEG_ZNEG => {
-                (Vector3f32 { x: -acc.y, y: -acc.x, z: -acc.z }, Vector3f32 { x: -gyro.y, y: -gyro.x, z: -gyro.z })
+                (Vector3f32::new(-acc.y, -acc.x, -acc.z), Vector3f32::new(-gyro.y, -gyro.x, -gyro.z))
             }
-            Self::ZPOS_YNEG_XPOS => {
-                (Vector3f32 { x: acc.z, y: -acc.y, z: acc.x }, Vector3f32 { x: gyro.z, y: -gyro.y, z: gyro.x })
-            }
-            Self::YPOS_ZPOS_XPOS => {
-                (Vector3f32 { x: acc.y, y: acc.z, z: acc.x }, Vector3f32 { x: gyro.y, y: gyro.z, z: gyro.x })
-            }
-            Self::ZNEG_YPOS_XPOS => {
-                (Vector3f32 { x: -acc.z, y: acc.y, z: acc.x }, Vector3f32 { x: -gyro.z, y: gyro.y, z: gyro.x })
-            }
-            Self::YNEG_ZNEG_XPOS => {
-                (Vector3f32 { x: -acc.y, y: -acc.z, z: acc.x }, Vector3f32 { x: -gyro.y, y: -gyro.z, z: gyro.x })
-            }
-            Self::ZPOS_YPOS_XNEG => {
-                (Vector3f32 { x: acc.z, y: acc.y, z: -acc.x }, Vector3f32 { x: gyro.z, y: gyro.y, z: -gyro.x })
-            }
-            Self::YPOS_ZNEG_XNEG => {
-                (Vector3f32 { x: acc.y, y: -acc.z, z: -acc.x }, Vector3f32 { x: gyro.y, y: -gyro.z, z: -gyro.x })
-            }
+            Self::ZPOS_YNEG_XPOS => (Vector3f32::new(acc.z, -acc.y, acc.x), Vector3f32::new(gyro.z, -gyro.y, gyro.x)),
+            Self::YPOS_ZPOS_XPOS => (Vector3f32::new(acc.y, acc.z, acc.x), Vector3f32::new(gyro.y, gyro.z, gyro.x)),
+            Self::ZNEG_YPOS_XPOS => (Vector3f32::new(-acc.z, acc.y, acc.x), Vector3f32::new(-gyro.z, gyro.y, gyro.x)),
+            Self::YNEG_ZNEG_XPOS => (Vector3f32::new(-acc.y, -acc.z, acc.x), Vector3f32::new(-gyro.y, -gyro.z, gyro.x)),
+            Self::ZPOS_YPOS_XNEG => (Vector3f32::new(acc.z, acc.y, -acc.x), Vector3f32::new(gyro.z, gyro.y, -gyro.x)),
+            Self::YPOS_ZNEG_XNEG => (Vector3f32::new(acc.y, -acc.z, -acc.x), Vector3f32::new(gyro.y, -gyro.z, -gyro.x)),
             Self::ZNEG_YNEG_XNEG => {
-                (Vector3f32 { x: -acc.z, y: -acc.y, z: -acc.x }, Vector3f32 { x: -gyro.z, y: -gyro.y, z: -gyro.x })
+                (Vector3f32::new(-acc.z, -acc.y, -acc.x), Vector3f32::new(-gyro.z, -gyro.y, -gyro.x))
             }
-            Self::YNEG_ZPOS_XNEG => {
-                (Vector3f32 { x: -acc.y, y: acc.z, z: -acc.x }, Vector3f32 { x: -gyro.y, y: gyro.z, z: -gyro.x })
-            }
-            Self::ZPOS_XPOS_YPOS => {
-                (Vector3f32 { x: acc.z, y: acc.x, z: acc.y }, Vector3f32 { x: gyro.z, y: gyro.x, z: gyro.y })
-            }
-            Self::XNEG_ZPOS_YPOS => {
-                (Vector3f32 { x: -acc.x, y: acc.z, z: acc.y }, Vector3f32 { x: -gyro.x, y: gyro.z, z: gyro.y })
-            }
-            Self::ZNEG_XNEG_YPOS => {
-                (Vector3f32 { x: -acc.z, y: -acc.x, z: acc.y }, Vector3f32 { x: -gyro.z, y: -gyro.x, z: gyro.y })
-            }
-            Self::XPOS_ZNEG_YPOS => {
-                (Vector3f32 { x: acc.x, y: -acc.z, z: acc.y }, Vector3f32 { x: gyro.x, y: -gyro.z, z: gyro.y })
-            }
-            Self::ZPOS_XNEG_YNEG => {
-                (Vector3f32 { x: acc.z, y: -acc.x, z: -acc.y }, Vector3f32 { x: gyro.z, y: -gyro.x, z: -gyro.y })
-            }
+            Self::YNEG_ZPOS_XNEG => (Vector3f32::new(-acc.y, acc.z, -acc.x), Vector3f32::new(-gyro.y, gyro.z, -gyro.x)),
+            Self::ZPOS_XPOS_YPOS => (Vector3f32::new(acc.z, acc.x, acc.y), Vector3f32::new(gyro.z, gyro.x, gyro.y)),
+            Self::XNEG_ZPOS_YPOS => (Vector3f32::new(-acc.x, acc.z, acc.y), Vector3f32::new(-gyro.x, gyro.z, gyro.y)),
+            Self::ZNEG_XNEG_YPOS => (Vector3f32::new(-acc.z, -acc.x, acc.y), Vector3f32::new(-gyro.z, -gyro.x, gyro.y)),
+            Self::XPOS_ZNEG_YPOS => (Vector3f32::new(acc.x, -acc.z, acc.y), Vector3f32::new(gyro.x, -gyro.z, gyro.y)),
+            Self::ZPOS_XNEG_YNEG => (Vector3f32::new(acc.z, -acc.x, -acc.y), Vector3f32::new(gyro.z, -gyro.x, -gyro.y)),
             Self::XNEG_ZNEG_YNEG => {
-                (Vector3f32 { x: -acc.x, y: -acc.z, z: -acc.y }, Vector3f32 { x: -gyro.x, y: -gyro.z, z: -gyro.y })
+                (Vector3f32::new(-acc.x, -acc.z, -acc.y), Vector3f32::new(-gyro.x, -gyro.z, -gyro.y))
             }
-            Self::ZNEG_XPOS_YNEG => {
-                (Vector3f32 { x: -acc.z, y: acc.x, z: -acc.y }, Vector3f32 { x: -gyro.z, y: gyro.x, z: -gyro.y })
-            }
-            Self::XPOS_ZPOS_YNEG => {
-                (Vector3f32 { x: acc.x, y: acc.z, z: -acc.y }, Vector3f32 { x: gyro.x, y: gyro.z, z: -gyro.y })
-            }
+            Self::ZNEG_XPOS_YNEG => (Vector3f32::new(-acc.z, acc.x, -acc.y), Vector3f32::new(-gyro.z, gyro.x, -gyro.y)),
+            Self::XPOS_ZPOS_YNEG => (Vector3f32::new(acc.x, acc.z, -acc.y), Vector3f32::new(gyro.x, gyro.z, -gyro.y)),
             Self::XPOS_YPOS_ZPOS_45 => (
-                Vector3f32 { x: acc.x * COS45 + acc.y * SIN45, y: -acc.x * SIN45 + acc.y * COS45, z: acc.z },
-                Vector3f32 { x: gyro.x * COS45 + gyro.y * SIN45, y: -gyro.x * SIN45 + gyro.y * COS45, z: gyro.z },
+                Vector3f32::new(acc.x * COS45 + acc.y * SIN45, -acc.x * SIN45 + acc.y * COS45, acc.z),
+                Vector3f32::new(gyro.x * COS45 + gyro.y * SIN45, -gyro.x * SIN45 + gyro.y * COS45, gyro.z),
             ),
             Self::YPOS_XNEG_ZPOS_45 => (
-                Vector3f32 { x: acc.x * COS135 + acc.y * SIN135, y: -acc.x * SIN135 + acc.y * COS135, z: acc.z },
-                Vector3f32 { x: gyro.x * COS135 + gyro.y * SIN135, y: -gyro.x * SIN135 + gyro.y * COS135, z: gyro.z },
+                Vector3f32::new(acc.x * COS135 + acc.y * SIN135, -acc.x * SIN135 + acc.y * COS135, acc.z),
+                Vector3f32::new(gyro.x * COS135 + gyro.y * SIN135, -gyro.x * SIN135 + gyro.y * COS135, gyro.z),
             ),
             Self::XNEG_YNEG_ZPOS_45 => (
-                Vector3f32 { x: acc.x * COS225 + acc.y * SIN225, y: -acc.x * SIN225 + acc.y * COS225, z: acc.z },
-                Vector3f32 { x: gyro.x * COS225 + gyro.y * SIN225, y: -gyro.x * SIN225 + gyro.y * COS225, z: gyro.z },
+                Vector3f32::new(acc.x * COS225 + acc.y * SIN225, -acc.x * SIN225 + acc.y * COS225, acc.z),
+                Vector3f32::new(gyro.x * COS225 + gyro.y * SIN225, -gyro.x * SIN225 + gyro.y * COS225, gyro.z),
             ),
             Self::YNEG_XPOS_ZPOS_45 => (
-                Vector3f32 { x: acc.x * COS315 + acc.y * SIN315, y: -acc.x * SIN315 + acc.y * COS315, z: acc.z },
-                Vector3f32 { x: gyro.x * COS315 + gyro.y * SIN315, y: -gyro.x * SIN315 + gyro.y * COS315, z: gyro.z },
+                Vector3f32::new(acc.x * COS315 + acc.y * SIN315, -acc.x * SIN315 + acc.y * COS315, acc.z),
+                Vector3f32::new(gyro.x * COS315 + gyro.y * SIN315, -gyro.x * SIN315 + gyro.y * COS315, gyro.z),
             ),
         }
     }
@@ -336,16 +288,16 @@ mod tests {
     #[test]
     fn imu_state_default() {
         let state = ImuCommon::default();
-        let z: Vector3f32 = Vector3f32::default();
+        let z = Vector3f32::default();
         assert_eq!(state.acc_offset, z);
     }
     #[test]
     fn map_vector() {
-        const INPUT: Vector3f32 = Vector3f32 { x: 2.0, y: 3.0, z: 5.0 };
+        const INPUT: Vector3f32 = Vector3f32::new(2.0, 3.0, 5.0);
         let output = AxisOrder::map_vector(AxisOrder::XPOS_YPOS_ZPOS, INPUT);
-        assert_eq!(Vector3f32 { x: 2.0, y: 3.0, z: 5.0 }, output);
+        assert_eq!(Vector3f32::new(2.0, 3.0, 5.0), output);
         let output = AxisOrder::map_vector(AxisOrder::YPOS_XNEG_ZPOS, INPUT);
-        assert_eq!(Vector3f32 { x: 3.0, y: -2.0, z: 5.0 }, output);
+        assert_eq!(Vector3f32::new(3.0, -2.0, 5.0), output);
     }
     #[test]
     fn axis_order_inverse() {

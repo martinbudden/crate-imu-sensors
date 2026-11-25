@@ -109,13 +109,13 @@ impl ImuCommon {
         if #[cfg(feature = "axis_xpos_ypos_zpos")] {
             v
         } else if #[cfg(feature = "axis_yneg_xpos_zpos")] {
-            Vector3f32 { x: -v.y,  y:  v.x,  z:  v.z }
+            Vector3f32::new(-v.y,   v.x,   v.z)
         } else if #[cfg(feature = "axis_ypos_xneg_zpos")] {
-            Vector3f32 { x:  v.y,  y: -v.x,  z:  v.z }
+            Vector3f32::new( v.y,  -v.x,   v.z)
         } else if #[cfg(feature = "axis_xneg_yneg_zpos")] {
-            Vector3f32 { x: -v.x,  y: -v.y,  z:  v.z }
+            Vector3f32::new(-v.x,  -v.y,   v.z)
         } else if #[cfg(feature = "axis_xpos_zpos_yneg")] {
-            Vector3f32 { x:  v.x,  y:  v.z,  z: -v.y }
+            Vector3f32::new( v.x,   v.z,  -v.y )
         } else {
         self.axis_order.map_vector(v)
         }}
@@ -129,17 +129,17 @@ impl ImuCommon {
         if #[cfg(feature = "axis_xpos_ypos_zpos")] {
             (acc, gyro)
         } else if #[cfg(feature = "axis_yneg_xpos_zpos")] {
-            (Vector3f32 { x:-acc.y,  y: acc.x,  z: acc.z },
-             Vector3f32 { x:-gyro.y, y: gyro.x, z: gyro.z })
+            (Vector3f32::new(-acc.y,  acc.x,  acc.z),
+             Vector3f32::new(-gyro.y, gyro.x, gyro.z))
         } else if #[cfg(feature = "axis_ypos_xneg_zpos")] {
-            (Vector3f32 { x: acc.y,  y: -acc.x,  z: acc.z },
-             Vector3f32 { x: gyro.y, y: -gyro.x, z: gyro.z })
+            (Vector3f32::new(acc.y,  -acc.x,  acc.z),
+             Vector3f32::new(gyro.y, -gyro.x, gyro.z))
         } else if #[cfg(feature = "axis_xneg_yneg_zpos")] {
-            (Vector3f32 { x:-acc.x,  y: -acc.y,  z: acc.z },
-             Vector3f32 { x:-gyro.x, y: -gyro.y, z: gyro.z })
+            (Vector3f32::new(-acc.x,  -acc.y,  acc.z),
+             Vector3f32::new(-gyro.x, -gyro.y, gyro.z))
         } else if #[cfg(feature = "axis_xpos_zpos_yneg")] {
-            (Vector3f32 { x: acc.x,  y: acc.z,  z: -acc.y },
-             Vector3f32 { x: gyro.x, y: gyro.z, z: -gyro.y })
+            (Vector3f32::new(acc.x,  acc.z,  -acc.y ),
+             Vector3f32::new(gyro.x, gyro.z, -gyro.y ))
         } else {
             self.axis_order.map_acc_gyro(acc, gyro)
         }}

@@ -236,7 +236,7 @@ mod tests {
         // TODO: sit down and work out some useful test data for this
         let data: [u8; 6] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
         let acc = Vector3f32::from_le_bytes_6(data) * imu.common.acc_scale - imu.common.acc_offset;
-        assert_eq!(Vector3f32 { x: 0.0, y: 0.0, z: 0.0 }, acc);
+        assert_eq!(Vector3f32::new(0.0, 0.0, 0.0), acc);
     }
     #[test]
     fn gyro_buf() {
@@ -246,11 +246,11 @@ mod tests {
         // TODO: sit down and work out some useful test data for this
         let data: [u8; 6] = [0x10, 0x00, 0x00, 0x01, 0x00, 0x7f];
         let gyro = Vector3f32::from_le_bytes_6(data) * imu.common.gyro_scale - imu.common.gyro_offset;
-        assert_eq!(Vector3f32 { x: 0.976_562_5, y: 15.625, z: 1984.375 }, gyro);
+        assert_eq!(Vector3f32::new(0.976_562_5, 15.625, 1984.375), gyro);
 
         let data: [u8; 6] = [0x01, 0x00, 0x80, 0x00, 0xff, 0x7f];
         let gyro = Vector3f32::from_le_bytes_6(data) * imu.common.gyro_scale - imu.common.gyro_offset;
-        assert_eq!(Vector3f32 { x: 0.061_035_156, y: 7.8125, z: 1999.939 }, gyro);
+        assert_eq!(Vector3f32::new(0.061_035_156, 7.8125, 1999.939), gyro);
     }
     #[test]
     fn scale_acc() {
@@ -297,28 +297,28 @@ mod tests {
         let _result = pollster::block_on(imu.bus().read_registers(0, Reg::GYRO_XL, &mut buf));
         assert_eq!([0x00, 0x08, 0x00, 0x40, 0x00, 0x70], buf);
         let g = Vector3f32::from_le_bytes_6(buf) * imu.common.gyro_scale - imu.common.gyro_offset;
-        assert_eq!(Vector3f32 { x: 125.0, y: 1000.0, z: 1750.0 }, g);
+        assert_eq!(Vector3f32::new(125.0, 1000.0, 1750.0), g);
 
         let gyro = Vector3f32::new(500.0, 1000.0, 2000.0);
         pollster::block_on(imu.set_gyro(gyro));
         let _result = pollster::block_on(imu.bus().read_registers(0, Reg::GYRO_XL, &mut buf));
         assert_eq!([0x00, 0x20, 0x00, 0x40, 0xFF, 0x7F], buf);
         let g = Vector3f32::from_le_bytes_6(buf) * imu.common.gyro_scale - imu.common.gyro_offset;
-        assert_eq!(Vector3f32 { x: 500.0, y: 1000.0, z: 1999.939 }, g);
+        assert_eq!(Vector3f32::new(500.0, 1000.0, 1999.939), g);
 
         let gyro = Vector3f32::new(2000.0, 4000.0, 10_000.0);
         pollster::block_on(imu.set_gyro(gyro));
         let _result = pollster::block_on(imu.bus().read_registers(0, Reg::GYRO_XL, &mut buf));
         assert_eq!([0xFF, 0x7F, 0xFF, 0x7F, 0xFF, 0x7F], buf);
         let g = Vector3f32::from_le_bytes_6(buf) * imu.common.gyro_scale - imu.common.gyro_offset;
-        assert_eq!(Vector3f32 { x: 1999.939, y: 1999.939, z: 1999.939 }, g);
+        assert_eq!(Vector3f32::new(1999.939, 1999.939, 1999.939), g);
 
         let gyro = Vector3f32::new(-2000.0, -4000.0, -10_000.0);
         pollster::block_on(imu.set_gyro(gyro));
         let _result = pollster::block_on(imu.bus().read_registers(0, Reg::GYRO_XL, &mut buf));
         assert_eq!([0x00, 0x80, 0x00, 0x80, 0x00, 0x80], buf);
         let g = Vector3f32::from_le_bytes_6(buf) * imu.common.gyro_scale - imu.common.gyro_offset;
-        assert_eq!(Vector3f32 { x: -2000.0, y: -2000.0, z: -2000.0 }, g);
+        assert_eq!(Vector3f32::new(-2000.0, -2000.0, -2000.0), g);
     }
     #[test]
     fn read_gyro() {
@@ -332,7 +332,7 @@ mod tests {
         let result = pollster::block_on(imu.read_gyro());
         assert!(result.is_ok());
         if let Ok((gyro, _timestamp)) = result {
-            assert_eq!(gyro, Vector3f32 { x: 125.0, y: 1000.0, z: 1750.0 });
+            assert_eq!(gyro, Vector3f32::new(125.0, 1000.0, 1750.0));
         }
 
         let gyro = Vector3f32::new(500.0, 1000.0, 2000.0);
@@ -340,7 +340,7 @@ mod tests {
         let result = pollster::block_on(imu.read_gyro());
         assert!(result.is_ok());
         if let Ok((gyro, _timestamp)) = result {
-            assert_eq!(gyro, Vector3f32 { x: 500.0, y: 1000.0, z: 1999.939 });
+            assert_eq!(gyro, Vector3f32::new(500.0, 1000.0, 1999.939));
         }
 
         let gyro = Vector3f32::new(2000.0, 4000.0, 10_000.0);
@@ -348,7 +348,7 @@ mod tests {
         let result = pollster::block_on(imu.read_gyro());
         assert!(result.is_ok());
         if let Ok((gyro, _timestamp)) = result {
-            assert_eq!(gyro, Vector3f32 { x: 1999.939, y: 1999.939, z: 1999.939 });
+            assert_eq!(gyro, Vector3f32::new(1999.939, 1999.939, 1999.939));
         }
 
         let gyro = Vector3f32::new(-2000.0, -4000.0, -10_000.0);
@@ -356,7 +356,7 @@ mod tests {
         let result = pollster::block_on(imu.read_gyro());
         assert!(result.is_ok());
         if let Ok((gyro, _timestamp)) = result {
-            assert_eq!(gyro, Vector3f32 { x: -2000.0, y: -2000.0, z: -2000.0 });
+            assert_eq!(gyro, Vector3f32::new(-2000.0, -2000.0, -2000.0));
         }
     }
 }
