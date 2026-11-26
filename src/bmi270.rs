@@ -1,5 +1,5 @@
 use embassy_time::Instant;
-use vqm::Vector3f32;
+use vqm::Vector3;
 
 use super::{
     AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
@@ -203,7 +203,7 @@ impl<B: ImuBus> Imu for Bmi270<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3<f32>, Instant), ImuError> {
         // For BMI270 SPI the first byte received is a dummy byte.
         let (acc, timestamp) = if self.bus.is_spi() {
             let mut buf = [0u8; 7];
@@ -212,19 +212,19 @@ impl<B: ImuBus> Imu for Bmi270<B> {
 
             // Destructure the 7-byte array reference into a 1-byte and a 6-byte array reference
             let [_, ref bytes_6 @ ..] = buf;
-            (Vector3f32::from_le_bytes_6(*bytes_6), timestamp)
+            (Vector3::<f32>::from_le_bytes_6(*bytes_6), timestamp)
         } else {
             let mut buf = [0u8; 6];
             self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
             let timestamp = Instant::now();
 
-            (Vector3f32::from_le_bytes_6(buf), timestamp)
+            (Vector3::<f32>::from_le_bytes_6(buf), timestamp)
         };
         let acc = acc * self.common.acc_scale - self.common.acc_offset;
         Ok((self.common.map_vector(acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3<f32>, Instant), ImuError> {
         // For BMI270 SPI the first byte received is a dummy byte.
         let (gyro, timestamp) = if self.bus.is_spi() {
             let mut buf = [0u8; 7];
@@ -233,20 +233,20 @@ impl<B: ImuBus> Imu for Bmi270<B> {
 
             // Destructure the 7-byte array reference into a 1-byte and a 6-byte array reference
             let [_, ref bytes_6 @ ..] = buf;
-            (Vector3f32::from_le_bytes_6(*bytes_6), timestamp)
+            (Vector3::<f32>::from_le_bytes_6(*bytes_6), timestamp)
         } else {
             let mut buf = [0u8; 6];
             self.write_read(&[Reg::GYRO_X_L], &mut buf).await?;
             let timestamp = Instant::now();
 
-            (Vector3f32::from_le_bytes_6(buf), timestamp)
+            (Vector3::<f32>::from_le_bytes_6(buf), timestamp)
         };
 
         let gyro = gyro * self.common.gyro_scale - self.common.gyro_offset;
         Ok((self.common.map_vector(gyro), timestamp))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3<f32>, Vector3<f32>, Instant), ImuError> {
         // For BMI270 SPI the first byte received is a dummy byte.
         let (acc, gyro, timestamp) = if self.bus.is_spi() {
             let mut buf = [0u8; 13];
@@ -257,7 +257,7 @@ impl<B: ImuBus> Imu for Bmi270<B> {
 
             let acc_buf = [a0, a1, a2, a3, a4, a5];
             let gyro_buf = [g0, g1, g2, g3, g4, g5];
-            (Vector3f32::from_le_bytes_6(acc_buf), Vector3f32::from_le_bytes_6(gyro_buf), timestamp)
+            (Vector3::<f32>::from_le_bytes_6(acc_buf), Vector3::<f32>::from_le_bytes_6(gyro_buf), timestamp)
         } else {
             let mut buf = [0u8; 12];
             self.write_read(&[Reg::ACC_X_L], &mut buf).await?;
@@ -267,7 +267,7 @@ impl<B: ImuBus> Imu for Bmi270<B> {
 
             let acc_buf = [a0, a1, a2, a3, a4, a5];
             let gyro_buf = [g0, g1, g2, g3, g4, g5];
-            (Vector3f32::from_le_bytes_6(acc_buf), Vector3f32::from_le_bytes_6(gyro_buf), timestamp)
+            (Vector3::<f32>::from_le_bytes_6(acc_buf), Vector3::<f32>::from_le_bytes_6(gyro_buf), timestamp)
         };
 
         let acc = acc * self.common.acc_scale - self.common.acc_offset;

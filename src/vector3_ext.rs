@@ -6,7 +6,7 @@ pub trait Vector3Ext {
 }
 
 impl Vector3Ext for Vector3<f32> {
-    /// Creates a Vector3f32 from a 6-byte little-endian byte array.
+    /// Creates a `Vector3<f32>` from a 6-byte little-endian byte array.
     /// ```
     /// # use vqm::Vector3;
     /// # use imu_sensors::Vector3Ext;
@@ -22,7 +22,7 @@ impl Vector3Ext for Vector3<f32> {
         Self::new(f32::from(x), f32::from(y), f32::from(z))
     }
 
-    /// Creates a Vector3f32 from a 6-byte big-endian byte array.
+    /// Creates a `Vector3<f32>` from a 6-byte big-endian byte array.
     /// ```
     /// # use vqm::Vector3;
     /// # use imu_sensors::Vector3Ext;

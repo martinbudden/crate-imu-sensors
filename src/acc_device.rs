@@ -1,5 +1,5 @@
 use embassy_time::Instant;
-use vqm::Vector3f32;
+use vqm::Vector3;
 
 use super::{AccSensitivity, AccUnits, ImuError};
 
@@ -13,5 +13,5 @@ pub trait AccDevice {
         acc_units: AccUnits,
     ) -> Result<u32, ImuError>;
 
-    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError>;
+    async fn read_acc(&mut self) -> Result<(Vector3<f32>, Instant), ImuError>;
 }

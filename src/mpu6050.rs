@@ -1,5 +1,5 @@
 use embassy_time::Instant;
-use vqm::Vector3f32;
+use vqm::Vector3;
 
 use super::{
     AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
@@ -127,25 +127,25 @@ impl<B: ImuBus> Imu for Mpu6050<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3<f32>, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::ACCEL_XOUT_H], &mut buf).await?;
         let timestamp = Instant::now();
 
-        let acc = Vector3f32::from_be_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
+        let acc = Vector3::<f32>::from_be_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok((self.common.map_vector(acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3<f32>, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
         let timestamp = Instant::now();
 
-        let gyro = Vector3f32::from_be_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
+        let gyro = Vector3::<f32>::from_be_bytes_6(buf) * self.common.gyro_scale - self.common.gyro_offset;
         Ok((self.common.map_vector(gyro), timestamp))
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3<f32>, Vector3<f32>, Instant), ImuError> {
         let mut buf = [0u8; 14];
         self.write_read(&[Reg::GYRO_XOUT_H], &mut buf).await?;
         let timestamp = Instant::now();
@@ -154,8 +154,8 @@ impl<B: ImuBus> Imu for Mpu6050<B> {
 
         let acc_buf = [a0, a1, a2, a3, a4, a5];
         let gyro_buf = [g0, g1, g2, g3, g4, g5];
-        let acc = Vector3f32::from_be_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
-        let gyro = Vector3f32::from_be_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
+        let acc = Vector3::<f32>::from_be_bytes_6(acc_buf) * self.common.acc_scale - self.common.acc_offset;
+        let gyro = Vector3::<f32>::from_be_bytes_6(gyro_buf) * self.common.gyro_scale - self.common.gyro_offset;
         let (acc, gyro) = self.common.map_acc_gyro(acc, gyro);
         Ok((acc, gyro, timestamp))
     }

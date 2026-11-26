@@ -1,7 +1,7 @@
 use super::{AxisOrder, ImuBus, ImuDeviceConfig, ImuError};
 
 use embassy_time::{Duration, Instant, Timer};
-use vqm::Vector3f32;
+use vqm::Vector3;
 
 use cfg_if::cfg_if;
 
@@ -60,10 +60,10 @@ pub enum GyroUnits {
 // Shared data members
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ImuCommon {
-    pub acc_offset: Vector3f32,
+    pub acc_offset: Vector3<f32>,
     pub acc_scale: f32,
 
-    pub gyro_offset: Vector3f32,
+    pub gyro_offset: Vector3<f32>,
     pub gyro_scale: f32,
 
     pub acc_sample_rate_hz: u32,
@@ -81,9 +81,9 @@ impl ImuCommon {
         const GYRO_2000DPS_RES: f32 = 2000.0 / 32768.0;
         const ACC_8G_RES: f32 = 8.0 / 32768.0;
         Self {
-            acc_offset: Vector3f32::new(0.0, 0.0, 0.0),
+            acc_offset: Vector3::<f32>::new(0.0, 0.0, 0.0),
             acc_scale: ACC_8G_RES,
-            gyro_offset: Vector3f32::new(0.0, 0.0, 0.0),
+            gyro_offset: Vector3::<f32>::new(0.0, 0.0, 0.0),
             gyro_scale: GYRO_2000DPS_RES,
             gyro_sample_rate_hz: 1000,
             acc_sample_rate_hz: 1000,
@@ -104,18 +104,18 @@ impl ImuCommon {
 
     #[inline]
     #[must_use]
-    pub fn map_vector(self, v: Vector3f32) -> Vector3f32 {
+    pub fn map_vector(self, v: Vector3<f32>) -> Vector3<f32> {
         cfg_if! {
         if #[cfg(feature = "axis_xpos_ypos_zpos")] {
             v
         } else if #[cfg(feature = "axis_yneg_xpos_zpos")] {
-            Vector3f32::new(-v.y,   v.x,   v.z)
+            Vector3<f32>::new(-v.y,   v.x,   v.z)
         } else if #[cfg(feature = "axis_ypos_xneg_zpos")] {
-            Vector3f32::new( v.y,  -v.x,   v.z)
+            Vector3<f32>::new( v.y,  -v.x,   v.z)
         } else if #[cfg(feature = "axis_xneg_yneg_zpos")] {
-            Vector3f32::new(-v.x,  -v.y,   v.z)
+            Vector3<f32>::new(-v.x,  -v.y,   v.z)
         } else if #[cfg(feature = "axis_xpos_zpos_yneg")] {
-            Vector3f32::new( v.x,   v.z,  -v.y )
+            Vector3<f32>::new( v.x,   v.z,  -v.y )
         } else {
         self.axis_order.map_vector(v)
         }}
@@ -123,23 +123,23 @@ impl ImuCommon {
 
     #[inline]
     #[must_use]
-    pub fn map_acc_gyro(self, acc: Vector3f32, gyro: Vector3f32) -> (Vector3f32, Vector3f32) {
+    pub fn map_acc_gyro(self, acc: Vector3<f32>, gyro: Vector3<f32>) -> (Vector3<f32>, Vector3<f32>) {
         // use a feature flag to hardcode the mapping, so that the match statement can be bypassed for optimal performance.
         cfg_if! {
         if #[cfg(feature = "axis_xpos_ypos_zpos")] {
             (acc, gyro)
         } else if #[cfg(feature = "axis_yneg_xpos_zpos")] {
-            (Vector3f32::new(-acc.y,  acc.x,  acc.z),
-             Vector3f32::new(-gyro.y, gyro.x, gyro.z))
+            (Vector3<f32>::new(-acc.y,  acc.x,  acc.z),
+             Vector3<f32>::new(-gyro.y, gyro.x, gyro.z))
         } else if #[cfg(feature = "axis_ypos_xneg_zpos")] {
-            (Vector3f32::new(acc.y,  -acc.x,  acc.z),
-             Vector3f32::new(gyro.y, -gyro.x, gyro.z))
+            (Vector3<f32>::new(acc.y,  -acc.x,  acc.z),
+             Vector3<f32>::new(gyro.y, -gyro.x, gyro.z))
         } else if #[cfg(feature = "axis_xneg_yneg_zpos")] {
-            (Vector3f32::new(-acc.x,  -acc.y,  acc.z),
-             Vector3f32::new(-gyro.x, -gyro.y, gyro.z))
+            (Vector3<f32>::new(-acc.x,  -acc.y,  acc.z),
+             Vector3<f32>::new(-gyro.x, -gyro.y, gyro.z))
         } else if #[cfg(feature = "axis_xpos_zpos_yneg")] {
-            (Vector3f32::new(acc.x,  acc.z,  -acc.y ),
-             Vector3f32::new(gyro.x, gyro.z, -gyro.y ))
+            (Vector3<f32>::new(acc.x,  acc.z,  -acc.y ),
+             Vector3<f32>::new(gyro.x, gyro.z, -gyro.y ))
         } else {
             self.axis_order.map_acc_gyro(acc, gyro)
         }}
@@ -172,11 +172,11 @@ pub trait Imu {
         self.bus().bus_write_read(address, write, read).await
     }
 
-    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError>;
+    async fn read_acc(&mut self) -> Result<(Vector3<f32>, Instant), ImuError>;
 
-    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError>;
+    async fn read_gyro(&mut self) -> Result<(Vector3<f32>, Instant), ImuError>;
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError>;
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3<f32>, Vector3<f32>, Instant), ImuError>;
 
     #[inline]
     #[must_use]
@@ -186,23 +186,23 @@ pub trait Imu {
 
     #[inline]
     #[must_use]
-    fn acc_offset(&self) -> Vector3f32 {
+    fn acc_offset(&self) -> Vector3<f32> {
         self.common().acc_offset
     }
 
     #[inline]
-    fn set_acc_offset(&mut self, acc_offset: Vector3f32) {
+    fn set_acc_offset(&mut self, acc_offset: Vector3<f32>) {
         self.common_mut().acc_offset = acc_offset;
     }
 
     #[inline]
     #[must_use]
-    fn acc_offset_mapped(&self) -> Vector3f32 {
+    fn acc_offset_mapped(&self) -> Vector3<f32> {
         self.common().axis_order.map_vector(self.common().acc_offset)
     }
 
     #[inline]
-    fn set_acc_offset_mapped(&mut self, acc_offset: Vector3f32) {
+    fn set_acc_offset_mapped(&mut self, acc_offset: Vector3<f32>) {
         let acc_offset_mapped = self.common().axis_order.axis_order_inverse().map_vector(acc_offset);
         self.set_acc_offset(acc_offset_mapped);
     }
@@ -215,23 +215,23 @@ pub trait Imu {
 
     #[inline]
     #[must_use]
-    fn gyro_offset(&self) -> Vector3f32 {
+    fn gyro_offset(&self) -> Vector3<f32> {
         self.common().gyro_offset
     }
 
     #[inline]
-    fn set_gyro_offset(&mut self, gyro_offset: Vector3f32) {
+    fn set_gyro_offset(&mut self, gyro_offset: Vector3<f32>) {
         self.common_mut().gyro_offset = gyro_offset;
     }
 
     #[inline]
     #[must_use]
-    fn gyro_offset_mapped(&self) -> Vector3f32 {
+    fn gyro_offset_mapped(&self) -> Vector3<f32> {
         self.common().axis_order.map_vector(self.common().gyro_offset)
     }
 
     #[inline]
-    fn set_gyro_offset_mapped(&mut self, gyro_offset: Vector3f32) {
+    fn set_gyro_offset_mapped(&mut self, gyro_offset: Vector3<f32>) {
         let gyro_offset_mapped = self.common().axis_order.axis_order_inverse().map_vector(gyro_offset);
         self.set_gyro_offset(gyro_offset_mapped);
     }

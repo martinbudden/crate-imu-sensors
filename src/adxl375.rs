@@ -1,5 +1,5 @@
 use embassy_time::Instant;
-use vqm::Vector3f32;
+use vqm::Vector3;
 
 use super::{
     AccDevice, AccSensitivity, AccUnits, AxisOrder, Imu, ImuBus, ImuCommon, ImuDeviceConfig, ImuError, Vector3Ext,
@@ -63,7 +63,7 @@ impl<B: ImuBus> AccDevice for Adxl375<B> {
         Adxl375::init(self, target_output_data_rate_hz, acc_units).await
     }
 
-    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3<f32>, Instant), ImuError> {
         <Self as Imu>::read_acc(self).await
     }
 }
@@ -91,21 +91,21 @@ impl<B: ImuBus> Imu for Adxl375<B> {
         &self.config
     }
 
-    async fn read_acc(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
+    async fn read_acc(&mut self) -> Result<(Vector3<f32>, Instant), ImuError> {
         let mut buf = [0u8; 6];
         self.write_read(&[Reg::DATAX0], &mut buf).await?;
         let timestamp = Instant::now();
 
-        let acc = Vector3f32::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
+        let acc = Vector3::<f32>::from_le_bytes_6(buf) * self.common.acc_scale - self.common.acc_offset;
         Ok((self.common.map_vector(acc), timestamp))
     }
 
-    async fn read_gyro(&mut self) -> Result<(Vector3f32, Instant), ImuError> {
+    async fn read_gyro(&mut self) -> Result<(Vector3<f32>, Instant), ImuError> {
         core::future::ready(()).await;
         Err(ImuError::GyroNotAvailable)
     }
 
-    async fn read_acc_gyro(&mut self) -> Result<(Vector3f32, Vector3f32, Instant), ImuError> {
+    async fn read_acc_gyro(&mut self) -> Result<(Vector3<f32>, Vector3<f32>, Instant), ImuError> {
         core::future::ready(()).await;
         Err(ImuError::GyroNotAvailable)
     }
