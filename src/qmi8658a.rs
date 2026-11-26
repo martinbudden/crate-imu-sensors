@@ -3,7 +3,7 @@ use vqm::Vector3f32;
 
 use super::{
     AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
-    ImuDeviceConfig, ImuError,
+    ImuDeviceConfig, ImuError, Vector3Ext,
 };
 
 const I2C_ADDRESS: u8 = 0x6A;

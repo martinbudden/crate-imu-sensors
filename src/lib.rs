@@ -40,10 +40,13 @@ mod lsm6ds;
 mod mpu6050;
 mod mpu6886;
 mod qmi8658a;
+mod vector3_ext;
 
 pub use axis_order::AxisOrder;
 
 pub use imu::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuCommon};
+
+pub use vector3_ext::Vector3Ext;
 
 pub use acc_device::AccDevice;
 pub use imu_device::ImuDevice;

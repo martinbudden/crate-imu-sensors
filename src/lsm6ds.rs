@@ -3,7 +3,7 @@ use vqm::Vector3f32;
 
 use super::{
     AccSensitivity, AccUnits, AxisOrder, GyroSensitivity, GyroUnits, Imu, ImuBus, ImuCommon, ImuDevice,
-    ImuDeviceConfig, ImuError,
+    ImuDeviceConfig, ImuError, Vector3Ext,
 };
 
 /// Common driver for LSM6DS3TR-C, ISM330DHCX, and LSM6DSOX IMUs.

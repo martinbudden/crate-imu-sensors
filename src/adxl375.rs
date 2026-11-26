@@ -1,7 +1,9 @@
 use embassy_time::Instant;
 use vqm::Vector3f32;
 
-use super::{AccDevice, AccSensitivity, AccUnits, AxisOrder, Imu, ImuBus, ImuCommon, ImuDeviceConfig, ImuError};
+use super::{
+    AccDevice, AccSensitivity, AccUnits, AxisOrder, Imu, ImuBus, ImuCommon, ImuDeviceConfig, ImuError, Vector3Ext,
+};
 
 const I2C_ADDRESS: u8 = 0x3A;
 const I2C_ADDRESS_ALTERNATIVE: u8 = 0xA6;
