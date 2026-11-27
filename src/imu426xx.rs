@@ -1,4 +1,8 @@
 use embassy_time::Instant;
+
+#[cfg(feature = "nalgebra")]
+use nalgebra::Vector3;
+#[cfg(feature = "vqm")]
 use vqm::Vector3;
 
 use super::{

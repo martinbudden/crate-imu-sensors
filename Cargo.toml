@@ -18,15 +18,13 @@ categories = [
 ]
 
 [package.metadata.docs.rs]
-features = ["libm", "serde", "storage"]
+features = ["vqm", "libm", "serde", "storage"]
 
 #[build-dependencies]
 #rustc_version = "0.4.1"
 
 [features]
-#default = ["std"]
-#default = ["libm", "spi"]
-#default = ["libm", "spi", "serde"]
+default = ["vqm"]
 
 # std is required for host testing
 std = [
@@ -34,15 +32,18 @@ std = [
     #"embassy-executor/platform-std",
     "embassy-time/std", 
     "embassy-time/generic-queue-8",
-    "vqm/std"
+    "vqm?/std",
+    "nalgebra?/std",
 ]
 
 # Middleware & Core Math
-libm = ["dep:libm", "vqm/libm"]
-align = ["vqm/align"]
-simd = ["vqm/simd"]
-serde = ["dep:serde", "vqm/serde"]
-storage = ["dep:sequential-storage", "serde", "postcard", "vqm/storage"]
+libm = ["dep:libm", "vqm?/libm", "nalgebra?/libm"]
+align = ["vqm?/align"]
+simd = ["vqm?/simd"]
+serde = ["dep:serde", "vqm?/serde", "nalgebra?/serde-serialize-no-std"]
+storage = ["dep:sequential-storage", "serde", "postcard", "vqm?/storage"]
+vqm = ["dep:vqm"]
+nalgebra = ["dep:nalgebra"]
 
 # Peripheral & Sensor Configuration Triggers
 i2c = []
@@ -64,8 +65,9 @@ postcard = { version = "1.2.0", default-features = false, features = ["embedded-
 sequential-storage = { version = "8.0.1", default-features = false, features = ["postcard"], optional = true }
 #nalgebra = { version = "0.35.0", default-features = false }
 #vqm = { version = "0.1.21", default-features = false }
-vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix", default-features = false }
+vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix", default-features = false, optional = true }
 #vqm = { path = "../vqm", default-features = false  }
+nalgebra = { version = "0.35.0", default-features = false, optional = true }
 
 cfg-if = "1.0.5"
 #num_enum = { version = "0.7.6", default-features = false }
@@ -88,9 +90,7 @@ esp-println = { version = "0.18.0", features = ["log-04"], optional = true }
 
 # --- DEV DEPENDENCIES (Only compiled for examples / tests) ---
 [dev-dependencies]
-imu-sensors = { path = ".", features = ["std", "serde", "storage"] }
 pollster = { version = "1.0.2", default-features = false }
-#strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 
 [workspace]
 members = [

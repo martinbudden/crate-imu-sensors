@@ -1,4 +1,8 @@
 use embassy_time::Instant;
+
+#[cfg(feature = "nalgebra")]
+use nalgebra::Vector3;
+#[cfg(feature = "vqm")]
 use vqm::Vector3;
 
 use super::{
@@ -120,7 +124,9 @@ impl<B: ImuBus> ImuMock<B> {
 
     pub async fn set_acc(&mut self, acc: Vector3<f32>) {
         let acc_unscaled = (acc + self.common.acc_offset) / self.common.acc_scale;
-        //let acc_unscaled = acc_unscaled.map(|x| x.clamp(f32::from(i16::MIN), f32::from(i16::MAX)));
+        #[cfg(feature = "nalgebra")]
+        let acc_unscaled = acc_unscaled.map(|x| x.clamp(f32::from(i16::MIN), f32::from(i16::MAX)));
+        #[cfg(feature = "vqm")]
         let acc_unscaled = acc_unscaled.clamp_elements(f32::from(i16::MIN), f32::from(i16::MAX));
         #[allow(clippy::cast_possible_truncation)]
         let x_i16 = acc_unscaled.x as i16;
@@ -138,7 +144,9 @@ impl<B: ImuBus> ImuMock<B> {
 
     pub async fn set_gyro(&mut self, gyro: Vector3<f32>) {
         let gyro_unscaled = (gyro + self.common.gyro_offset) / self.common.gyro_scale;
-        //let gyro_unscaled = gyro_unscaled.map(|x| x.clamp(f32::from(i16::MIN), f32::from(i16::MAX)));
+        #[cfg(feature = "nalgebra")]
+        let gyro_unscaled = gyro_unscaled.map(|x| x.clamp(f32::from(i16::MIN), f32::from(i16::MAX)));
+        #[cfg(feature = "vqm")]
         let gyro_unscaled = gyro_unscaled.clamp_elements(f32::from(i16::MIN), f32::from(i16::MAX));
 
         #[allow(clippy::cast_possible_truncation)]

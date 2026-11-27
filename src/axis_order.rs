@@ -1,5 +1,10 @@
 //#![allow(clippy::return_self_not_must_use)]
-use vqm::Vector3f32;
+#[cfg(feature = "nalgebra")]
+use nalgebra::Vector3;
+#[cfg(feature = "vqm")]
+use vqm::Vector3;
+
+type Vector3f32 = Vector3<f32>;
 
 #[cfg(feature = "serde")]
 use ::serde::{Deserialize, Serialize};

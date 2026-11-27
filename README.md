@@ -41,7 +41,10 @@ these flight controllers can be repurposed for other projects.
 
 ## Dependencies
 
-This library uses the [vqm(vector quaternion matrix) crate](https://crates.io/crates/vqm) for its `Vector3f32` classes.
+This crate uses an external crate for its `Vector3` `struct`s. This can be either:
+
+1. (default) the [vqm(vector quaternion matrix)](https://crates.io/crates/vqm) crate - uses the `vqm` feature flag.
+2. the [nalgebra](https://crates.io/crates/nalgebra) crate - use the `nalgebra` feature flag (and clear the `vqm` feature flag).
 
 ## Original implementation
 

@@ -1,3 +1,6 @@
+#[cfg(feature = "nalgebra")]
+use nalgebra::Vector3;
+#[cfg(feature = "vqm")]
 use vqm::Vector3;
 
 pub trait Vector3Ext {
@@ -8,6 +11,9 @@ pub trait Vector3Ext {
 impl Vector3Ext for Vector3<f32> {
     /// Creates a `Vector3<f32>` from a 6-byte little-endian byte array.
     /// ```
+    /// #[cfg(feature = "nalgebra")]
+    /// # use nalgebra::Vector3;
+    /// #[cfg(feature = "vqm")]
     /// # use vqm::Vector3;
     /// # use imu_sensors::Vector3Ext;
     /// let bytes = [0x01, 0x00, 0x00, 0x01, 0x2A, 0x00];
@@ -24,6 +30,9 @@ impl Vector3Ext for Vector3<f32> {
 
     /// Creates a `Vector3<f32>` from a 6-byte big-endian byte array.
     /// ```
+    /// #[cfg(feature = "nalgebra")]
+    /// # use nalgebra::Vector3;
+    /// #[cfg(feature = "vqm")]
     /// # use vqm::Vector3;
     /// # use imu_sensors::Vector3Ext;
     /// let bytes = [0x00, 0x01, 0x01, 0x00, 0x00, 0x2A];

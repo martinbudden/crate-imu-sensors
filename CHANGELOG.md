@@ -9,6 +9,16 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
+## [0.1.9] - 2026-12-xx
+
+### Added
+
+- `vqm` and `nalgebra` feature flags to allow use of either `vqm` of `nalgebra` vectors.
+
+### Changed
+
+- Updated to `vqm` `0.1.xx`.
+
 ## [0.1.8] - 2026-11-21
 
 ### Changed

@@ -1,6 +1,10 @@
 use super::{AxisOrder, ImuBus, ImuDeviceConfig, ImuError};
 
 use embassy_time::{Duration, Instant, Timer};
+
+#[cfg(feature = "nalgebra")]
+use nalgebra::Vector3;
+#[cfg(feature = "vqm")]
 use vqm::Vector3;
 
 use cfg_if::cfg_if;
