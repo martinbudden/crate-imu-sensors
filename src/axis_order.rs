@@ -15,7 +15,8 @@ use {postcard::experimental::max_size::MaxSize, sequential_storage::map::Postcar
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "storage", derive(MaxSize))]
 pub enum AxisOrder {
     #[default]
     XPOS_YPOS_ZPOS = 0,

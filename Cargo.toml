@@ -30,7 +30,7 @@ default = ["vqm"]
 std = [
     #"embassy-executor",
     #"embassy-executor/platform-std",
-    "embassy-time/std", 
+    "embassy-time/std",
     "embassy-time/generic-queue-8",
     "vqm?/std",
     "nalgebra?/std",
@@ -93,7 +93,4 @@ esp-println = { version = "0.18.0", features = ["log-04"], optional = true }
 pollster = { version = "1.0.2", default-features = false }
 
 [workspace]
-members = [
-    ".",
-    "xtask",
-]
+members = [".", "xtask"]

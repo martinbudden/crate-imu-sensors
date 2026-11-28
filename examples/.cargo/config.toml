@@ -45,8 +45,7 @@ check-rp235xa = [
     "check",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
-    "--features",
-    "rp235xa"
+    "--features", "rp235xa"
 ]
 
 # Invoke using cargo build-rp235xa
@@ -54,8 +53,7 @@ build-rp235xa = [
     "build",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
-    "--features",
-    "rp235xa"
+    "--features", "rp235xa"
 ]
 
 # Invoke using:
@@ -64,6 +62,5 @@ build-rp235xa = [
 run-rp235xa = [
     "run",
     "--target", "thumbv8m.main-none-eabihf",
-    "--no-default-features",
-    "--features", "rp235xa"
+    "--no-default-features", "--features", "rp235xa"
 ]

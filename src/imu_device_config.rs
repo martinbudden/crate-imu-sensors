@@ -7,7 +7,8 @@ use {postcard::experimental::max_size::MaxSize, sequential_storage::map::Postcar
 
 // Imu configuration, set on construction and read-only thereafter
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "storage", derive(MaxSize))]
 pub struct ImuDeviceConfig {
     pub gyro_id_msp: u16,
     pub acc_id_msp: u16,
